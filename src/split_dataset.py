@@ -14,9 +14,6 @@ args = parser.parse_args()
 
 # read all interactions
 df = pd.read_csv(all_interactions.format(args.dataset), delimiter='\t', header=None)
-
-num_users, num_items = df[0].nunique(), df[1].nunique()
-
 df = df.groupby(args.column_stratify).apply(lambda x: x.sample(frac=1)).reset_index(drop=True)
 df_grouped = df.groupby(args.column_stratify)
 
