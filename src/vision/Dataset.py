@@ -23,14 +23,15 @@ class Dataset:
         if sample.mode != 'RGB':
             sample = sample.convert(mode='RGB')
 
-        if self.resize:
-            sample = sample.resize(self.resize, resample=Image.BICUBIC)
+        res_sample = sample.resize(self.resize, resample=Image.BICUBIC)
 
         if self.model_name == 'ResNet50':
-            sample = tf.keras.applications.resnet.preprocess_input(np.array(sample))
+            norm_sample = tf.keras.applications.resnet.preprocess_input(np.array(res_sample))
+        elif self.model_name == 'VGG19':
+            norm_sample = tf.keras.applications.vgg19.preprocess_input(np.array(res_sample))
         elif self.model_name == 'ResNet152':
-            sample = tf.keras.applications.resnet.preprocess_input(np.array(sample))
+            norm_sample = tf.keras.applications.resnet.preprocess_input(np.array(res_sample))
         else:
             raise NotImplemented('This feature extractor has not been added yet!')
 
-        return np.expand_dims(sample, axis=0), self.filenames[idx]
+        return np.expand_dims(norm_sample, axis=0), np.array(sample), self.filenames[idx]

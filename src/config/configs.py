@@ -11,7 +11,10 @@ test_path = data_path + 'testset.tsv'
 original = data_path + 'original/'
 images_path = original + 'images/'
 classes_path = original + 'classes_{0}.csv'
-features_path = original + 'features_{0}_{1}.npy'
+cnn_features_path = original + 'cnn_features_{0}_{1}.npy'
+color_features_path = original + 'color_features.npy'
+edge_features_path = original + 'edge_features.pkl'
+texture_features_path = original + 'texture_features_{0}.pkl'
 
 # RESULTS
 weight_dir = '../results/rec_model_weights'

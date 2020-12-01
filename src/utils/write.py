@@ -1,6 +1,5 @@
 import numpy as np
 import pickle
-import os
 
 
 def write_csv(df, filename):

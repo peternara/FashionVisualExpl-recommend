@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 
-class FeatureExtractor:
+class CnnFeatureExtractor:
     def __init__(self, output_layer='avg_pool', model_name='ResNet50', imagenet=None):
         self.model_name = model_name
         self.output_layer = output_layer
@@ -11,6 +11,9 @@ class FeatureExtractor:
 
         if self.model_name == 'ResNet50':
             self.classifier = tf.keras.applications.ResNet50()
+            self.model = tf.keras.Model(self.classifier.input, self.classifier.get_layer(output_layer).output)
+        elif self.model_name == 'VGG19':
+            self.classifier = tf.keras.applications.VGG19()
             self.model = tf.keras.Model(self.classifier.input, self.classifier.get_layer(output_layer).output)
         elif self.model_name == 'ResNet152':
             self.classifier = tf.keras.applications.ResNet152()
