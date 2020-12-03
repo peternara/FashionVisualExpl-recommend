@@ -1,6 +1,8 @@
 import logging
+from time import time
 import os
 from abc import ABC
+from copy import deepcopy
 
 import numpy as np
 import tensorflow as tf
@@ -11,13 +13,13 @@ from PIL import Image
 from dataset.visual_loader_mixin import VisualLoader
 from recommender.models.BPRMF import BPRMF
 from recommender.models.cnn import CNN
+from utils.write import save_obj
 from config.configs import *
 
 random.seed(0)
 np.random.seed(0)
 tf.random.set_seed(0)
 logging.disable(logging.WARNING)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class ExplVBPR(BPRMF, VisualLoader, ABC):
@@ -259,3 +261,52 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
         self.optimizer.apply_gradients(zip(grads, params))
 
         return loss.numpy()
+
+    def train(self):
+        # initialize the max_hr to memorize the best result
+        max_hr = 0
+        best_model = self
+        best_epoch = self.restore_epochs
+        results = {}
+        next_batch = self.data.next_triple_batch_pipeline()
+        steps = 0
+        loss = 0
+        it = 0
+        steps_per_epoch = int(self.data.num_users // self.params.batch_size)
+
+        start_ep = time()
+
+        for batch in next_batch:
+            steps += 1
+            loss += self.train_step(batch)
+
+            if steps == steps_per_epoch:
+                epoch_text = 'Epoch {0}/{1} \tLoss: {2:.3f}'.format(it, self.params.epochs, loss / steps)
+                self.evaluator.eval(it, results, epoch_text, start_ep)
+                it += 1
+                loss = 0
+                steps = 0
+
+                # print and log the best result (HR@k)
+                if max_hr < results[self.epoch]['hr']:
+                    max_hr = results[self.epoch]['hr']
+                    best_epoch = self.epoch
+                    best_model = deepcopy(self)
+
+                if self.epoch % self.verbose == 0 or self.epoch == 1:
+                    self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/' + \
+                                         f'weights-{self.epoch}-{self.learning_rate}-{self.__class__.__name__}')
+                start_ep = time()
+
+        self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/' + \
+                                                 f'recs-{it}-{self.learning_rate}-{self.__class__.__name__}.tsv')
+        save_obj(results, f'{results_dir}/{self.params.dataset}/results-metrics-{self.learning_rate}')
+
+        # Store the best model
+        print("Store Best Model at Epoch {0}".format(best_epoch))
+        saver_ckpt = tf.train.Checkpoint(optimizer=self.optimizer, model=best_model)
+        saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/' + \
+                        f'best-weights-{best_epoch}-{self.learning_rate}-{self.__class__.__name__}')
+        best_model.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/' + \
+                                                       f'best-recs-{best_epoch}-{self.learning_rate}-' + \
+                                                       f'{self.__class__.__name__}.tsv')

@@ -127,8 +127,8 @@ class DataLoader(object):
 
     def read_images_triple(self, user, pos, neg):
         # load positive and negative item images
-        im_pos = Image.open(images_path.format(self.params.dataset) + str(pos.numpy()) + '.jpg')
-        im_neg = Image.open(images_path.format(self.params.dataset) + str(neg.numpy()) + '.jpg')
+        im_pos = Image.open(edges_path.format(self.params.dataset) + str(pos.numpy()) + '.tiff')
+        im_neg = Image.open(edges_path.format(self.params.dataset) + str(neg.numpy()) + '.tiff')
 
         try:
             im_pos.load()
@@ -145,6 +145,6 @@ class DataLoader(object):
         if im_neg.mode != 'RGB':
             im_neg = im_neg.convert(mode='RGB')
 
-        im_pos = (np.array(im_pos.resize((224, 224))) - np.float32(127.5)) / np.float32(127.5)
-        im_neg = (np.array(im_neg.resize((224, 224))) - np.float32(127.5)) / np.float32(127.5)
+        im_pos = np.array(im_pos.resize((224, 224))) / np.float32(255)
+        im_neg = np.array(im_neg.resize((224, 224))) / np.float32(255)
         return user.numpy(), pos.numpy(), im_pos, neg.numpy(), im_neg

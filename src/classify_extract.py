@@ -1,3 +1,6 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 from vision.LowFeatureExtractor import *
 from vision.CnnFeatureExtractor import *
 from vision.Dataset import *

@@ -1,9 +1,11 @@
 import argparse
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from dataset.dataset import DataLoader
 from recommender.models.BPRMF import BPRMF
 from recommender.models.VBPR import VBPR
+from recommender.models.ExplVBPR import ExplVBPR
 from config.configs import *
 
 
@@ -11,7 +13,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run train of the Recommender Model.")
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--dataset', nargs='?', default='amazon_clothing', help='dataset name')
-    parser.add_argument('--rec', nargs='?', default="mm", help="set recommendation model")
+    parser.add_argument('--rec', nargs='?', default="expl_vbpr", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=128, help='batch_size')
     parser.add_argument('--top_k', type=int, default=50, help='top-k of recommendation.')
     parser.add_argument('--epochs', type=int, default=20, help='Number of epochs.')
@@ -59,6 +61,8 @@ def train():
         model = BPRMF(data, args)
     elif args.rec == 'vbpr':
         model = VBPR(data, args)
+    elif args.rec == 'expl_vbpr':
+        model = ExplVBPR(data, args)
     else:
         raise NotImplementedError('Not implemented or unknown Recommender Model.')
     model.train()
