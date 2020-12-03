@@ -10,6 +10,7 @@ validation_path = data_path + 'validationset.tsv'
 test_path = data_path + 'testset.tsv'
 original = data_path + 'original/'
 images_path = original + 'images/'
+dataset_info = data_path + 'stats_after_downloading'
 
 classes_path = original + 'classes_{1}.csv'
 cnn_features_path = original + 'cnn_features_{1}_{2}.npy'

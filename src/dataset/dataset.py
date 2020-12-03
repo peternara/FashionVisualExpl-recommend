@@ -1,6 +1,5 @@
 from config.configs import *
 from PIL import Image
-import pandas as pd
 import tensorflow as tf
 import numpy as np
 
@@ -39,13 +38,15 @@ class DataLoader(object):
         self.load_list('test')
 
     def get_length(self):
-        test = pd.read_csv(self.path_test_data, sep='\t', header=None)
-        try:
-            test.columns = ['user', 'item', 'r', 't']
-        except:
-            test.columns = ['user', 'item', 'r']
-
-        return test['user'].nunique(), test['item'].nunique()
+        with open(dataset_info.format(self.params.dataset), 'r') as f:
+            lines = f.readlines()
+            for i, line in enumerate(lines):
+                if i == 2:
+                    us = int(line.split(': ')[1])
+                if i == 3:
+                    it = int(line.split(': ')[1])
+                    break
+        return us, it
 
     def load_list(self, train_val_test):
         # Get number of users and items
