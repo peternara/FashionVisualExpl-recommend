@@ -2,6 +2,7 @@ import argparse
 import os
 
 from dataset.dataset import DataLoader
+from recommender.models.BPRMF import BPRMF
 from recommender.models.VBPR import VBPR
 from config.configs import *
 
@@ -9,27 +10,28 @@ from config.configs import *
 def parse_args():
     parser = argparse.ArgumentParser(description="Run train of the Recommender Model.")
     parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--dataset', nargs='?', default='amazon_fashion', help='dataset name')
-    parser.add_argument('--rec', nargs='?', default="acf", help="set recommendation model")
+    parser.add_argument('--dataset', nargs='?', default='amazon_clothing', help='dataset name')
+    parser.add_argument('--rec', nargs='?', default="mm", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=128, help='batch_size')
-    parser.add_argument('--k', type=int, default=50, help='top-k of recommendation.')
-    parser.add_argument('--epochs', type=int, default=500, help='Number of epochs.')
+    parser.add_argument('--top_k', type=int, default=50, help='top-k of recommendation.')
+    parser.add_argument('--epochs', type=int, default=20, help='Number of epochs.')
     parser.add_argument('--verbose', type=int, default=50, help='number of epochs to store model parameters.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
-    parser.add_argument('--validation', type=int, default=1, help='1 to use validation set, 0 otherwise')
+    parser.add_argument('--validation', type=bool, default=False, help='True to use validation set, False otherwise')
     parser.add_argument('--restore_epochs', type=int, default=1,
                         help='Default is 1: The restore epochs (Must be lower than the epochs)')
 
     # Parameters useful during the visual recs
+    parser.add_argument('--cnn_model', nargs='?', default='vgg19', help='Model used for feature extraction.')
+    parser.add_argument('--output_layer', nargs='?', default='block5_conv4',
+                        help='Output layer for feature extraction.')
     parser.add_argument('--embed_k', type=int, default=64, help='Embedding size.')
-    parser.add_argument('--embed_d', type=int, default=20, help='size of low dimensionality')
-    parser.add_argument('--lambda1', type=float, default=1.0, help='lambda1 DVBPR')
-    parser.add_argument('--lambda2', type=float, default=0.001, help='lambda2 DVBPR')
-    parser.add_argument('--layers_component', type=list, default=[64, 1], help='list component level layers for ACF')
-    parser.add_argument('--layers_item', type=list, default=[64, 1], help='list item level layers for ACF')
-    parser.add_argument('--l_w', type=float, default=0.01, help='size of low dimensionality')
-    parser.add_argument('--l_b', type=float, default=1e-2, help='size of low dimensionality')
-    parser.add_argument('--l_e', type=float, default=0, help='size of low dimensionality')
+    parser.add_argument('--embed_d_f', type=int, default=20, help='size of low dimensionality for visual features')
+    parser.add_argument('--embed_d_t', type=int, default=20, help='size of low dimensionality for texture features')
+    parser.add_argument('--l_w', type=float, default=0.01, help='embedding regularization')
+    parser.add_argument('--l_b', type=float, default=1e-2, help='bias regularization')
+    parser.add_argument('--l_e', type=float, default=0, help='projection matrix regularization')
+    parser.add_argument('--l_f', type=float, default=0, help='feature extractor regularization')
 
     return parser.parse_args()
 
@@ -51,8 +53,11 @@ def train():
     print("\n")
 
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
+    os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
-    if args.rec == 'vbpr':
+    if args.rec == 'bprmf':
+        model = BPRMF(data, args)
+    elif args.rec == 'vbpr':
         model = VBPR(data, args)
     else:
         raise NotImplementedError('Not implemented or unknown Recommender Model.')

@@ -1,6 +1,4 @@
 from sklearn.cluster import KMeans
-import tensorflow as tf
-from PIL import Image
 import numpy as np
 import cv2
 
@@ -37,18 +35,8 @@ def _plot_colors(hist, centroids):
 
 
 class LowFeatureExtractor:
-    def __init__(self, model_name, num_colors, output_layers, resize_gram):
-        self.model_name = model_name
+    def __init__(self, num_colors):
         self.num_colors = num_colors
-        self.output_layers = output_layers
-        self.resize_gram = resize_gram
-
-        if self.model_name == 'ResNet50':
-            self.model = tf.keras.applications.ResNet50()
-        elif self.model_name == 'VGG19':
-            self.model = tf.keras.applications.VGG19()
-        else:
-            raise NotImplemented('This feature extractor has not been added yet!')
 
     def extract_color_edges(self, sample):
         image, filename = sample
@@ -87,23 +75,3 @@ class LowFeatureExtractor:
         dominant_colors_image = _plot_colors(hist, dominant_colors)
 
         return Ie_end, dominant_colors.flatten(), dominant_colors_image
-
-    def extract_texture(self, sample):
-        image, filename = sample
-        gram_matrices = np.empty(shape=[len(self.output_layers), np.prod(self.resize_gram)])
-
-        for i, layer in enumerate(self.output_layers):
-            current_model = tf.keras.Model(self.model.input, self.model.get_layer(layer).output)
-            current_f_maps = current_model(image, training=False)
-            current_f_maps = tf.reshape(current_f_maps,
-                                        [current_f_maps.shape[3], current_f_maps.shape[1] * current_f_maps.shape[2]])
-            current_gram_matrix = (tf.matmul(current_f_maps,
-                                             current_f_maps,
-                                             transpose_b=True) / np.prod(current_f_maps.shape)).numpy()
-            resized_current_gram_matrix = np.array(Image.fromarray(current_gram_matrix).resize(
-                self.resize_gram,
-                resample=Image.BICUBIC
-            )).flatten()
-            gram_matrices[i] = resized_current_gram_matrix
-
-        return gram_matrices.flatten()

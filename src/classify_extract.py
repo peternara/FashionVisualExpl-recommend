@@ -6,11 +6,11 @@ from utils.write import *
 from utils.read import *
 
 from skimage import io
-import pandas as pd
 import numpy as np
 import argparse
 import time
 import sys
+import csv
 
 
 def parse_args():
@@ -27,7 +27,8 @@ def parse_args():
         'block4_conv1',
         'block5_conv1'
     ], help='output layers for gram matrix')
-    parser.add_argument('--resize_gram', type=list, default=[32, 32], help='resize shape for gram matrix')
+    parser.add_argument('--resize_gram', type=tuple, default=(32, 32), help='resize shape for gram matrix')
+    parser.add_argument('--print_each', type=int, default=100, help='print each n samples')
 
     return parser.parse_args()
 
@@ -38,18 +39,22 @@ def classify_extract():
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
     os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
+    if not os.path.exists(colors_path.format(args.dataset)):
+        os.makedirs(colors_path.format(args.dataset))
+    if not os.path.exists(edges_path.format(args.dataset)):
+        os.makedirs(edges_path.format(args.dataset))
+
     # model setting
     cnn_model = CnnFeatureExtractor(
+        gram_output_layers=args.texture_output_layers,
+        resize_gram=args.resize_gram,
         model_name=args.model_name,
         output_layer=args.cnn_output_name,
         imagenet=read_imagenet_classes_txt(imagenet_classes_path)
     )
 
     low_level_model = LowFeatureExtractor(
-        model_name=args.model_name,
-        num_colors=args.num_colors,
-        output_layers=args.texture_output_layers,
-        resize_gram=args.resize_gram
+        num_colors=args.num_colors
     )
 
     # dataset setting
@@ -60,11 +65,10 @@ def classify_extract():
     )
     print('Loaded dataset from %s' % images_path.format(args.dataset))
 
-    # features and classes
     # high-level visual features
-    df = pd.DataFrame([], columns={'ImageID', 'ClassStr', 'ClassNum', 'Prob'})
     cnn_features_shape = [data.num_samples, *cnn_model.model.output.shape[1:]]
     cnn_features = np.empty(shape=cnn_features_shape)
+
     # low-level visual features
     colors = np.empty(shape=[data.num_samples, args.num_colors * 3])
     textures = np.empty(shape=[data.num_samples, np.prod(args.resize_gram) * len(args.texture_output_layers)])
@@ -73,38 +77,43 @@ def classify_extract():
     print('Starting classification...\n')
     start = time.time()
 
-    for i, d in enumerate(data):
-        norm_image, original_image, path = d
+    with open(classes_path.format(args.dataset, args.model_name.lower()), 'w') as f:
+        fieldnames = ['ImageID', 'ClassStr', 'ClassNum', 'Prob']
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
 
-        # high-level visual features extraction
-        out_class = cnn_model.classify(sample=(norm_image, path))
-        cnn_features[i] = cnn_model.model(norm_image, training=False)
-        df = df.append(out_class, ignore_index=True)
+        for i, d in enumerate(data):
+            norm_image, original_image, path = d
 
-        # low-level visual feature extraction
-        edge, color, color_image = low_level_model.extract_color_edges(sample=(original_image, path))
-        colors[i] = color
-        io.imsave(edges_path.format(args.dataset) + str(i) + '.tiff', edge)
-        io.imsave(colors_path.format(args.dataset) + str(i) + '.tiff', color_image)
+            # high-level visual features extraction
+            out_class = cnn_model.classify(sample=(norm_image, path))
+            cnn_features[i] = cnn_model.model(norm_image, training=False)
+            writer.writerow(out_class)
 
-        texture = low_level_model.extract_texture(sample=(norm_image, path))
-        textures[i] = texture
+            # low-level visual feature extraction
+            edge, color, color_image = low_level_model.extract_color_edges(sample=(original_image, path))
+            colors[i] = color
+            io.imsave(edges_path.format(args.dataset) + str(i) + '.tiff', edge)
+            io.imsave(colors_path.format(args.dataset) + str(i) + '.jpg', color_image)
 
-        if (i + 1) % 100 == 0:
-            sys.stdout.write('\r%d/%d samples completed' % (i + 1, data.num_samples))
-            sys.stdout.flush()
+            texture = cnn_model.extract_texture(sample=(norm_image, path))
+            textures[i] = texture
 
-    write_csv(df=df, filename=classes_path.format(args.dataset, args.model_name.lower()))
+            if (i + 1) % args.print_each == 0:
+                sys.stdout.write('\r%d/%d samples completed' % (i + 1, data.num_samples))
+                sys.stdout.flush()
+
     save_np(npy=cnn_features,
-            filename=cnn_features_path.format(args.dataset, args.model_name.lower(), args.output_name))
+            filename=cnn_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
     save_np(npy=colors, filename=color_features_path.format(args.dataset))
     save_np(npy=textures, filename=texture_features_path.format(args.dataset, args.model_name))
 
     end = time.time()
 
     print('\n\nClassification and feature extraction completed in %f seconds.' % (end - start))
-    print('Saved cnn features numpy to ==> %s' % cnn_features_path.format(args.dataset))
-    print('Saved classification file to ==> %s' % classes_path.format(args.dataset))
+    print('Saved cnn features numpy to ==> %s' %
+          cnn_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
+    print('Saved classification file to ==> %s' % classes_path.format(args.dataset, args.model_name.lower()))
     print('Saved colors features numpy to ==> %s' % color_features_path.format(args.dataset))
     print('Saved textures features to ==> %s' % texture_features_path.format(args.dataset, args.model_name))
 

@@ -36,19 +36,19 @@ class VBPR(BPRMF, VisualLoader, ABC):
         self.learning_rate = self.params.lr
         self.l_e = self.params.l_e
 
-        self.process_visual_features(data)
+        self.process_visual_features()
 
         # Initialize Model Parameters
         self.Bp = tf.Variable(
-            self.initializer(shape=[self.num_image_feature, 1]), name='Bp', dtype=tf.float32)
+            self.initializer(shape=[self.dim_visual_feature, 1]), name='Bp', dtype=tf.float32)
         self.Tu = tf.Variable(
             self.initializer(shape=[self.num_users, self.embed_d]),
             name='Tu', dtype=tf.float32)  # (users, low_embedding_size)
         self.F = tf.Variable(
-            self.emb_image,
+            self.visual_features,
             name='F', dtype=tf.float32, trainable=False)
         self.E = tf.Variable(
-            self.initializer(shape=[self.num_image_feature, self.embed_d]),
+            self.initializer(shape=[self.dim_visual_feature, self.embed_d]),
             name='E', dtype=tf.float32)  # (items, low_embedding_size)
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
@@ -121,7 +121,7 @@ class VBPR(BPRMF, VisualLoader, ABC):
                                                  tf.nn.l2_loss(gamma_neg),
                                                  tf.nn.l2_loss(theta_u)]) \
                     + self.l_b * tf.nn.l2_loss(beta_pos) \
-                    + self.l_b * tf.nn.l2_loss(beta_pos)/10 \
+                    + self.l_b * tf.nn.l2_loss(beta_neg)/10 \
                     + self.l_e * tf.reduce_sum([tf.nn.l2_loss(self.E), tf.nn.l2_loss(self.Bp)])
 
             # Loss to be optimized

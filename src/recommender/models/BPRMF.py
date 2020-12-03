@@ -11,7 +11,6 @@ import random
 from config.configs import *
 from recommender.Evaluator import Evaluator
 from recommender.RecommenderModel import RecommenderModel
-from utils.read import find_checkpoint
 from utils.write import save_obj
 
 random.seed(0)
@@ -40,7 +39,7 @@ class BPRMF(RecommenderModel, ABC):
         self.l_w = self.params.l_w
         self.l_b = self.params.l_b
 
-        self.evaluator = Evaluator(self, data, params.k)
+        self.evaluator = Evaluator(self, data, params.top_k)
 
         # Initialize Model Parameters
         self.Bi = tf.Variable(tf.zeros(self.num_items), name='Bi', dtype=tf.float32)
@@ -82,21 +81,6 @@ class BPRMF(RecommenderModel, ABC):
         """
         return self.Bi + tf.matmul(self.Gu, self.Gi, transpose_b=True)
 
-    def one_epoch(self, batches):
-        """
-        Train recommender model for one epoch.
-        Args:
-            batches: list of batches to train on
-        Returns:
-            average loss over epoch
-        """
-        loss = 0
-        steps = 0
-        for batch in zip(*batches):
-            steps += 1
-            loss += self.train_step(batch)
-        return loss/steps
-
     def train_step(self, batch):
         """
         Apply a single training step on one batch.
@@ -133,36 +117,43 @@ class BPRMF(RecommenderModel, ABC):
         return loss.numpy()
 
     def train(self):
-        if self.restore():
-            self.restore_epochs += 1
-        else:
-            print("Training from scratch...")
-
-        # initialize the max_ndcg to memorize the best result
+        # initialize the max_hr to memorize the best result
         max_hr = 0
         best_model = self
         best_epoch = self.restore_epochs
         results = {}
+        next_batch = self.data.next_triple_batch()
+        steps = 0
+        loss = 0
+        it = 0
+        steps_per_epoch = int(self.data.num_users // self.params.batch_size)
 
-        for self.epoch in range(self.restore_epochs, self.epochs + 1):
-            start_ep = time()
-            batches = self.data.shuffle(self.batch_size)
-            loss = self.one_epoch(batches)
-            epoch_text = 'Epoch {0}/{1} \tLoss: {2:.3f}'.format(self.epoch, self.epochs, loss)
-            self.evaluator.eval(self.epoch, results, epoch_text, start_ep)
+        start_ep = time()
 
-            # print and log the best result (HR@10)
-            if max_hr < results[self.epoch]['hr']:
-                max_hr = results[self.epoch]['hr']
-                best_epoch = self.epoch
-                best_model = deepcopy(self)
+        for batch in next_batch:
+            steps += 1
+            loss += self.train_step(batch)
 
-            if self.epoch % self.verbose == 0 or self.epoch == 1:
-                self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/' + \
-                                     f'weights-{self.epoch}-{self.learning_rate}-{self.__class__.__name__}')
+            if steps == steps_per_epoch:
+                epoch_text = 'Epoch {0}/{1} \tLoss: {2:.3f}'.format(it, self.params.epochs, loss / steps)
+                self.evaluator.eval(it, results, epoch_text, start_ep)
+                it += 1
+                loss = 0
+                steps = 0
+
+                # print and log the best result (HR@k)
+                if max_hr < results[self.epoch]['hr']:
+                    max_hr = results[self.epoch]['hr']
+                    best_epoch = self.epoch
+                    best_model = deepcopy(self)
+
+                if self.epoch % self.verbose == 0 or self.epoch == 1:
+                    self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/' + \
+                                         f'weights-{self.epoch}-{self.learning_rate}-{self.__class__.__name__}')
+                start_ep = time()
 
         self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/' + \
-                                            f'recs-{self.epoch}-{self.learning_rate}-{self.__class__.__name__}.tsv')
+                                                 f'recs-{it}-{self.learning_rate}-{self.__class__.__name__}.tsv')
         save_obj(results, f'{results_dir}/{self.params.dataset}/results-metrics-{self.learning_rate}')
 
         # Store the best model
@@ -173,17 +164,3 @@ class BPRMF(RecommenderModel, ABC):
         best_model.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/' + \
                                                        f'best-recs-{best_epoch}-{self.learning_rate}-' + \
                                                        f'{self.__class__.__name__}.tsv')
-
-    def restore(self):
-        if self.restore_epochs > 1:
-            try:
-                checkpoint_file = find_checkpoint(weight_dir, self.restore_epochs, self.epochs,
-                                                  self.rec)
-                self.saver_ckpt.restore(checkpoint_file)
-                print("Model correctly Restored at Epoch: {0}".format(self.restore_epochs))
-                return True
-            except Exception as ex:
-                print("Error in model restoring operation! {0}".format(ex))
-        else:
-            print("Restore Epochs Not Specified")
-        return False

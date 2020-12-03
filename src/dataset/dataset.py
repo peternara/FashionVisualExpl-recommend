@@ -1,55 +1,8 @@
-import scipy.sparse as sp
-import numpy as np
-from multiprocessing import Pool
-from multiprocessing import cpu_count
 from config.configs import *
-from time import time
+from PIL import Image
 import pandas as pd
-import collections
-
-np.random.seed(0)
-
-_user_input = None
-_item_input_pos = None
-_batch_size = None
-_index = None
-_model = None
-_train = None
-_test = None
-_num_items = None
-
-
-def _get_train_batch(i):
-    """
-    Generation of a batch in multiprocessing
-    :param i: index to control the batch generation
-    :return:
-    """
-    user_batch, item_pos_batch, item_neg_batch = [], [], []
-    begin = i * _batch_size
-    for idx in range(begin, begin + _batch_size):
-        user_batch.append(_user_input[_index[idx]])
-        item_pos_batch.append(_item_input_pos[_index[idx]])
-        j = np.random.randint(_num_items)
-        while j in _train[_user_input[_index[idx]]]:
-            j = np.random.randint(_num_items)
-        item_neg_batch.append(j)
-    return np.array(user_batch)[:, None], np.array(item_pos_batch)[:, None], np.array(item_neg_batch)[:, None]
-
-
-def _get_train_all(i):
-    """
-    Generation of a batch in multiprocessing
-    :param i: index to control the triple
-    :return:
-    """
-    user = _user_input[_index[i]]
-    item_pos = _item_input_pos[_index[i]]
-    j = np.random.randint(_num_items)
-    while j in _train[_user_input[_index[i]]]:
-        j = np.random.randint(_num_items)
-    item_neg = j
-    return user, item_pos, item_neg
+import tensorflow as tf
+import numpy as np
 
 
 class DataLoader(object):
@@ -64,82 +17,41 @@ class DataLoader(object):
         """
         self.params = params
 
-        path_train_data, path_validation_data, path_test_data = \
-            training_path.format(self.params.dataset), \
-            validation_path.format(self.params.dataset), \
-            test_path.format(self.params.dataset)
+        self.path_train_data = training_path.format(self.params.dataset)
+        self.path_validation_data = None
+        if self.params.validation:
+            self.path_validation_data = validation_path.format(self.params.dataset)
+        self.path_test_data = test_path.format(self.params.dataset)
 
-        self.num_users, self.num_items = self.get_length(path_train_data, path_validation_data, path_test_data)
+        self.num_users, self.num_items = self.get_length()
 
         # train
-        self.load_train_file(path_train_data)
-        self.load_train_file_as_list(path_train_data)
+        self.training_list = []
+        self.load_list('train')
 
         # validation
-        self.load_validation_file(path_validation_data)
-        self.load_validation_file_all_users()  # when user is not present, a [] is added
+        self.validation_list = []
+        if self.params.validation:
+            self.load_list('val')
 
         # test
-        self.load_test_file(path_test_data)
-        self.load_test_file_all_users()  # when user is not present, a [] is added
+        self.test_list = []
+        self.load_list('test')
 
-        self._user_input, self._item_input_pos = self.sampling()
-
-    def get_length(self, train_name, validation_name, test_name):
-        train = pd.read_csv(train_name, sep='\t', header=None)
-        validation = pd.read_csv(validation_name, sep='\t', header=None)
-        test = pd.read_csv(test_name, sep='\t', header=None)
+    def get_length(self):
+        test = pd.read_csv(self.path_test_data, sep='\t', header=None)
         try:
-            train.columns = ['user', 'item', 'r', 't']
-            validation.columns = ['user', 'item', 'r', 't']
             test.columns = ['user', 'item', 'r', 't']
-            data = train.copy()
-            data = data.append(validation, ignore_index=True)
-            data = data.append(test, ignore_index=True)
         except:
-            train.columns = ['user', 'item', 'r']
-            validation.columns = ['user', 'item', 'r']
             test.columns = ['user', 'item', 'r']
-            data = train.copy()
-            data = data.append(validation, ignore_index=True)
-            data = data.append(test, ignore_index=True)
 
-        return data['user'].nunique(), data['item'].nunique()
+        return test['user'].nunique(), test['item'].nunique()
 
-    def load_train_file(self, filename):
-        """
-        Read /data/dataset_name/train file and Return the matrix.
-        """
-        # Get number of users and items
-        # self.num_users, self.num_items = 0, 0
-        with open(filename, "r") as f:
-            line = f.readline()
-            while line is not None and line != "":
-                arr = line.split("\t")
-                u, i = int(arr[0]), int(arr[1])
-                # self.num_users = max(self.num_users, u)
-                # self.num_items = max(self.num_items, i)
-                line = f.readline()
-
-        # Construct URM
-        self.train = sp.dok_matrix((self.num_users + 1, self.num_items + 1), dtype=np.float32)
-        with open(filename, "r") as f:
-            line = f.readline()
-            while line is not None and line != "":
-                arr = line.split("\t")
-                user, item, rating = int(arr[0]), int(arr[1]), float(arr[2])
-                if rating > 0:
-                    self.train[user, item] = 1.0
-                line = f.readline()
-
-        # self.num_users = self.train.shape[0]
-        # self.num_items = self.train.shape[1]
-
-    def load_train_file_as_list(self, filename):
+    def load_list(self, train_val_test):
         # Get number of users and items
         u_ = 0
-        self.train_list, items = [], []
-        with open(filename, "r") as f:
+        items = []
+        with open(self.path_train_data, "r") as f:
             line = f.readline()
             index = 0
             while line is not None and line != "":
@@ -147,150 +59,92 @@ class DataLoader(object):
                 u, i = int(arr[0]), int(arr[1])
                 if u_ < u:
                     index = 0
-                    self.train_list.append(items)
+                    if train_val_test == 'train':
+                        self.training_list.append(items)
+                    elif train_val_test == 'val':
+                        self.validation_list.append(items)
+                    else:
+                        self.test_list.append(items)
                     items = []
                     u_ += 1
                 index += 1
                 items.append(i)
                 line = f.readline()
-        self.train_list.append(items)
-
-    def load_validation_file(self, filename):
-        self.validation = []
-        with open(filename, "r") as f:
-            line = f.readline()
-            while line != None and line != "":
-                arr = line.split("\t")
-                user, item = int(arr[0]), int(arr[1])
-                self.validation.append([user, item])
-                line = f.readline()
-
-    def load_test_file(self, filename):
-        self.test = []
-        with open(filename, "r") as f:
-            line = f.readline()
-            while line != None and line != "":
-                arr = line.split("\t")
-                user, item = int(arr[0]), int(arr[1])
-                self.test.append([user, item])
-                line = f.readline()
-
-    def load_test_file_as_list(self, filename):
-        # Get number of users and items
-        u_ = 0
-        self.test_list, items = [], []
-        with open(filename, "r") as f:
-            line = f.readline()
-            index = 0
-            while line is not None and line != "":
-                arr = line.split("\t")
-                u, i = int(arr[0]), int(arr[1])
-                if u_ < u:
-                    index = 0
-                    self.test_list.append(items)
-                    items = []
-                    u_ += 1
-                index += 1
-                items.append(i)
-                line = f.readline()
-        self.test_list.append(items)
-
-    def load_validation_file_all_users(self):
-        t_dict = {}
-        for inter in self.validation:
-            if inter[0] not in t_dict:
-                t_dict[inter[0]] = []
-            t_dict[inter[0]].append(*inter[1:])
-        for tu in range(self.num_users + 1):
-            if tu not in t_dict.keys():
-                t_dict[tu] = []
-        od = collections.OrderedDict(sorted(t_dict.items()))
-        self.validation_list = list(map(list, od.values()))
-
-    def load_test_file_all_users(self):
-        t_dict = {}
-        for inter in self.test:
-            if inter[0] not in t_dict:
-                t_dict[inter[0]] = []
-            t_dict[inter[0]].append(*inter[1:])
-        for tu in range(self.num_users + 1):
-            if tu not in t_dict.keys():
-                t_dict[tu] = []
-        od = collections.OrderedDict(sorted(t_dict.items()))
-        self.test_list = list(map(list, od.values()))
-
-    def sampling(self):
-        _user_input, _item_input_pos = [], []
-        for (u, i) in self.train.keys():
-            # positive instance
-            _user_input.append(u)
-            _item_input_pos.append(i)
-        return _user_input, _item_input_pos
-
-    def create_adj_mat(self):
-        t1 = time()
-        adj_mat = sp.dok_matrix((self.num_users + self.num_items + 2,
-                                 self.num_users + self.num_items + 2), dtype=np.float32)
-        adj_mat = adj_mat.tolil()
-        R = self.train.tolil()
-
-        adj_mat[:self.num_users + 1, self.num_users + 1:] = R
-        adj_mat[self.num_users + 1:, :self.num_users + 1] = R.T
-        adj_mat = adj_mat.todok()
-        print('Adjacency Matrix created in %f seconds' % (time() - t1))
-
-        t2 = time()
-
-        def normalized_adj_bi(adj):
-            rowsum = np.array(adj.sum(1))
-
-            d_inv_sqrt = np.power(rowsum, -0.5).flatten()
-            d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.
-            d_mat_inv_sqrt = sp.diags(d_inv_sqrt)
-            bi_adj = adj.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt)
-            return bi_adj.tocoo()
-
-        norm_adj_mat = normalized_adj_bi(adj_mat + sp.eye(adj_mat.shape[0]))
-        mean_adj_mat = normalized_adj_bi(adj_mat)
-
-        print('Normalize Adjacency Matrix created in %f seconds' % (time() - t2))
-        return adj_mat.tocsr(), norm_adj_mat.tocsr(), mean_adj_mat.tocsr()
-
-    def shuffle(self, batch_size=512):
-        """
-        Shuffle dataset to create batch with batch size
-        Variable are global to be faster!
-        :param batch_size: default 512
-        :return: set of all generated random batches
-        """
-        global _user_input
-        global _item_input_pos
-        global _batch_size
-        global _index
-        global _model
-        global _train
-        global _num_items
-
-        _user_input, _item_input_pos = self._user_input, self._item_input_pos
-        _batch_size = batch_size
-        _index = list(range(len(_user_input)))
-        _train = self.train_list
-        _num_items = self.num_items
-
-        np.random.shuffle(_index)
-        pool = Pool(cpu_count())
-
-        if self.params.rec in ['bprmf', 'vbpr', 'ngcf', 'deepstyle', 'acf']:
-            _num_batches = len(_user_input) // _batch_size
-            res = pool.map(_get_train_batch, range(_num_batches))
-            pool.close()
-            pool.join()
-            user_input = [r[0] for r in res]
-            item_input_pos = [r[1] for r in res]
-            item_input_neg = [r[2] for r in res]
-            return user_input, item_input_pos, item_input_neg
+        if train_val_test == 'train':
+            self.training_list.append(items)
+        elif train_val_test == 'val':
+            self.validation_list.append(items)
         else:
-            res = pool.map(_get_train_all, range(len(_user_input)))
-            pool.close()
-            pool.join()
-            return res
+            self.test_list.append(items)
+
+    def all_triple_batches(self):
+        r_int = np.random.randint
+        actual_used_samples = (self.num_users // self.params.batch_size) * self.params.batch_size
+        user_input, pos_input, neg_input = [], [], []
+
+        for ep in range(self.params.epochs):
+            for ab in range(actual_used_samples):
+                u = r_int(self.num_users)
+                ui = set(self.training_list[u])
+                lui = len(ui)
+                if lui == self.num_items:
+                    continue
+                i = list(ui)[r_int(lui)]
+
+                j = r_int(self.num_items)
+                while j in ui:
+                    j = r_int(self.num_items)
+                user_input.append(np.array(u))
+                pos_input.append(np.array(i))
+                neg_input.append(np.array(j))
+
+        return user_input, pos_input, neg_input,
+
+    def next_triple_batch(self):
+        all_triples = self.all_triple_batches()
+        data = tf.data.Dataset.from_tensor_slices(all_triples)
+        data = data.batch(batch_size=self.params.batch_size)
+        data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+        return data
+
+    def next_triple_batch_pipeline(self):
+        def load_func(u, p, n):
+            b = tf.py_function(
+                self.read_images_triple,
+                (u, p, n,),
+                (np.int32, np.int32, np.float32, np.int32, np.float32)
+            )
+            return b
+
+        all_triples = self.all_triple_batches()
+        data = tf.data.Dataset.from_tensor_slices(all_triples)
+        data = data.map(load_func, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        data = data.batch(batch_size=self.params.batch_size)
+        data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+        return data
+
+    def read_images_triple(self, user, pos, neg):
+        # load positive and negative item images
+        im_pos = Image.open(images_path.format(self.params.dataset) + str(pos.numpy()) + '.jpg')
+        im_neg = Image.open(images_path.format(self.params.dataset) + str(neg.numpy()) + '.jpg')
+
+        try:
+            im_pos.load()
+        except ValueError:
+            print(f'Image at path {pos}.jpg was not loaded correctly!')
+
+        try:
+            im_neg.load()
+        except ValueError:
+            print(f'Image at path {neg}.jpg was not loaded correctly!')
+
+        if im_pos.mode != 'RGB':
+            im_pos = im_pos.convert(mode='RGB')
+        if im_neg.mode != 'RGB':
+            im_neg = im_neg.convert(mode='RGB')
+
+        im_pos = (np.array(im_pos.resize((224, 224))) - np.float32(127.5)) / np.float32(127.5)
+        im_neg = (np.array(im_neg.resize((224, 224))) - np.float32(127.5)) / np.float32(127.5)
+        return user.numpy(), pos.numpy(), im_pos, neg.numpy(), im_neg

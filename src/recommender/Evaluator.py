@@ -25,25 +25,25 @@ def _init_eval_model(data):
 
 
 def _evaluate_input_list(user):
-    validation_items = _dataset.validation_list[user]
+    test_items = _dataset.test_list[user]
 
-    if len(validation_items) > 0:
-        item_input = set(range(_dataset.num_items)) - set(_dataset.train_list[user])
+    if len(test_items) > 0:
+        item_input = set(range(_dataset.num_items)) - set(_dataset.training_list[user])
 
-        for validation_item in validation_items:
-            if validation_item in item_input:
-                item_input.remove(validation_item)
+        for test_item in test_items:
+            if test_item in item_input:
+                item_input.remove(test_item)
 
         item_input = list(item_input)
 
-        for validation_item in validation_items:
-            item_input.append(validation_item)
+        for test_item in test_items:
+            item_input.append(test_item)
 
         user_input = np.full(len(item_input), user, dtype='int32')[:, None]
         item_input = np.array(item_input)[:, None]
         return user_input, item_input
     else:
-        print('User {} has no validation list!'.format(user))
+        print('User {} has no test list!'.format(user))
         return 0, 0
 
 
@@ -55,11 +55,11 @@ def _eval_by_user(user, curr_pred):
 
     # AREA UNDER CURVE (AUC)
     predictions = curr_pred[list(item_input.reshape(-1))]
-    neg_predict, pos_predict = predictions[:-len(_dataset.validation_list[user])], \
-                               predictions[-len(_dataset.validation_list[user]):]
+    neg_predict, pos_predict = predictions[:-len(_dataset.test_list[user])], \
+                               predictions[-len(_dataset.test_list[user]):]
 
     position = 0
-    for t in range(len(_dataset.validation_list[user])):
+    for t in range(len(_dataset.test_list[user])):
         position += (neg_predict >= pos_predict[t]).sum()
 
     auc = 1 - (position / (len(neg_predict) * len(pos_predict)))
@@ -74,7 +74,7 @@ def _eval_by_user(user, curr_pred):
 
     r = []
     for i in k_max_item_score:
-        if i in item_input[-len(_dataset.validation_list[user]):]:
+        if i in item_input[-len(_dataset.test_list[user]):]:
             r.append(1)
         else:
             r.append(0)
@@ -119,11 +119,7 @@ class Evaluator:
         res = []
 
         eval_start_time = time()
-
-        if self.model.model_name in ['acf']:
-            all_predictions = self.model.predict_all_validation().numpy()
-        else:
-            all_predictions = self.model.predict_all().numpy()
+        all_predictions = self.model.predict_all().numpy()
 
         for user in range(self.model.data.num_users):
             current_prediction = all_predictions[user, :]
@@ -144,7 +140,7 @@ class Evaluator:
         if len(epoch_text) != '':
             results[epoch] = {'hr': hr, 'auc': auc}
 
-    def store_recommendation(self, attack_name="", path=""):
+    def store_recommendation(self, path=""):
         """
         Store recommendation list (top-k) in order to be used for the ranksys framework (anonymized)
         attack_name: The name for the attack stored file
