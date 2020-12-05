@@ -12,7 +12,7 @@ from config.configs import *
 def parse_args():
     parser = argparse.ArgumentParser(description="Run train of the Recommender Model.")
     parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--dataset', nargs='?', default='amazon_clothing', help='dataset name')
+    parser.add_argument('--dataset', nargs='?', default='small_amazon_clothing', help='dataset name')
     parser.add_argument('--rec', nargs='?', default="expl_vbpr", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=128, help='batch_size')
     parser.add_argument('--top_k', type=int, default=50, help='top-k of recommendation.')
@@ -30,6 +30,7 @@ def parse_args():
     parser.add_argument('--embed_k', type=int, default=64, help='Embedding size.')
     parser.add_argument('--embed_d_f', type=int, default=20, help='size of low dimensionality for visual features')
     parser.add_argument('--embed_d_t', type=int, default=20, help='size of low dimensionality for texture features')
+    parser.add_argument('--attention_layers', type=list, default=[64, 1], help='attention layers')
     parser.add_argument('--l_w', type=float, default=0.01, help='embedding regularization')
     parser.add_argument('--l_b', type=float, default=1e-2, help='bias regularization')
     parser.add_argument('--l_e', type=float, default=0, help='projection matrix regularization')
@@ -41,10 +42,10 @@ def parse_args():
 def train():
     args = parse_args()
 
-    if not os.path.exists(results_dir + f'/{args.dataset}'):
-        os.makedirs(results_dir + f'/{args.dataset}')
-    if not os.path.exists(weight_dir + f'/{args.dataset}'):
-        os.makedirs(weight_dir + f'/{args.dataset}')
+    if not os.path.exists(results_dir + f'/{args.dataset}/{args.rec}'):
+        os.makedirs(results_dir + f'/{args.dataset}/{args.rec}')
+    if not os.path.exists(weight_dir + f'/{args.dataset}/{args.rec}'):
+        os.makedirs(weight_dir + f'/{args.dataset}/{args.rec}')
 
     data = DataLoader(params=args)
 

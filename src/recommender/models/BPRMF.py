@@ -130,37 +130,45 @@ class BPRMF(RecommenderModel, ABC):
 
         start_ep = time()
 
+        print('***************************')
+        print('Start training...')
+        print('***************************')
         for batch in next_batch:
             steps += 1
-            loss += self.train_step(batch)
+            loss_batch = self.train_step(batch)
+            loss += loss_batch
+            print('\tBatches: %d/%d - Loss: %f' % (steps, steps_per_epoch, loss_batch))
 
+            # epoch is over
             if steps == steps_per_epoch:
                 epoch_text = 'Epoch {0}/{1} \tLoss: {2:.3f}'.format(it, self.params.epochs, loss / steps)
                 self.evaluator.eval(it, results, epoch_text, start_ep)
+
+                # Print and Log the best result (HR@k)
+                if max_hr < results[it]['hr']:
+                    max_hr = results[it]['hr']
+                    best_epoch = it
+                    best_model = deepcopy(self)
+
+                if it % self.verbose == 0 or it == 1:
+                    self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
+                                         f'weights-{it}-{self.learning_rate}')
+                start_ep = time()
                 it += 1
                 loss = 0
                 steps = 0
 
-                # print and log the best result (HR@k)
-                if max_hr < results[self.epoch]['hr']:
-                    max_hr = results[self.epoch]['hr']
-                    best_epoch = self.epoch
-                    best_model = deepcopy(self)
-
-                if self.epoch % self.verbose == 0 or self.epoch == 1:
-                    self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/' + \
-                                         f'weights-{self.epoch}-{self.learning_rate}-{self.__class__.__name__}')
-                start_ep = time()
-
-        self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/' + \
-                                                 f'recs-{it}-{self.learning_rate}-{self.__class__.__name__}.tsv')
-        save_obj(results, f'{results_dir}/{self.params.dataset}/results-metrics-{self.learning_rate}')
+        print('***************************')
+        print('Start training...')
+        print('***************************')
+        self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
+                                                 f'recs-{it}-{self.learning_rate}.tsv')
+        save_obj(results, f'{results_dir}/{self.params.dataset}/{self.params.rec}/results-metrics-{self.learning_rate}')
 
         # Store the best model
         print("Store Best Model at Epoch {0}".format(best_epoch))
         saver_ckpt = tf.train.Checkpoint(optimizer=self.optimizer, model=best_model)
-        saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/' + \
-                        f'best-weights-{best_epoch}-{self.learning_rate}-{self.__class__.__name__}')
-        best_model.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/' + \
-                                                       f'best-recs-{best_epoch}-{self.learning_rate}-' + \
-                                                       f'{self.__class__.__name__}.tsv')
+        saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
+                        f'best-weights-{best_epoch}-{self.learning_rate}')
+        best_model.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
+                                                       f'best-recs-{best_epoch}-{self.learning_rate}.tsv')

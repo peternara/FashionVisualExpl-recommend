@@ -23,4 +23,3 @@ class RecommenderModel(tf.keras.Model, ABC):
         self.restore_epochs = self.params.restore_epochs
         self.model_name = self.params.rec
         self.dataset_name = self.params.dataset
-        self.initializer = tf.initializers.GlorotUniform()

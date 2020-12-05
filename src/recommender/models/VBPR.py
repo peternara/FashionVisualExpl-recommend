@@ -29,6 +29,7 @@ class VBPR(BPRMF, VisualLoader, ABC):
                                       [l_w, l_b]: regularization,
                                       lr: learning rate}
         """
+        self.initializer = tf.initializers.GlorotUniform()
         super(VBPR, self).__init__(data, params)
 
         self.embed_k = self.params.embed_k
@@ -119,10 +120,10 @@ class VBPR(BPRMF, VisualLoader, ABC):
             reg_loss = self.l_w * tf.reduce_sum([tf.nn.l2_loss(gamma_u),
                                                  tf.nn.l2_loss(gamma_pos),
                                                  tf.nn.l2_loss(gamma_neg),
-                                                 tf.nn.l2_loss(theta_u)]) \
-                    + self.l_b * tf.nn.l2_loss(beta_pos) \
-                    + self.l_b * tf.nn.l2_loss(beta_neg)/10 \
-                    + self.l_e * tf.reduce_sum([tf.nn.l2_loss(self.E), tf.nn.l2_loss(self.Bp)])
+                                                 tf.nn.l2_loss(theta_u)]) * 2\
+                    + self.l_b * tf.nn.l2_loss(beta_pos) * 2 \
+                    + self.l_b * tf.nn.l2_loss(beta_neg) * 2 / 10 \
+                    + self.l_e * tf.reduce_sum([tf.nn.l2_loss(self.E), tf.nn.l2_loss(self.Bp)]) * 2
 
             # Loss to be optimized
             loss += reg_loss

@@ -19,7 +19,7 @@ import csv
 def parse_args():
     parser = argparse.ArgumentParser(description="Run classification and feature extraction for original images.")
     parser.add_argument('--gpu', type=int, default=0, help='GPU id to run experiments')
-    parser.add_argument('--dataset', nargs='?', default='amazon_clothing', help='dataset path')
+    parser.add_argument('--dataset', nargs='?', default='small_amazon_clothing', help='dataset path')
     parser.add_argument('--model_name', nargs='?', default='VGG19', help='model for feature extraction')
     parser.add_argument('--num_colors', type=int, default=3, help='number of dominant colors to extract')
     parser.add_argument('--cnn_output_name', nargs='?', default='fc2', help='output layer name')
