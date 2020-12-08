@@ -14,10 +14,10 @@ def parse_args():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--dataset', nargs='?', default='small_amazon_clothing', help='dataset name')
     parser.add_argument('--rec', nargs='?', default="expl_vbpr", help="set recommendation model")
-    parser.add_argument('--batch_size', type=int, default=128, help='batch_size')
+    parser.add_argument('--batch_size', type=int, default=4, help='batch_size')
     parser.add_argument('--top_k', type=int, default=50, help='top-k of recommendation.')
     parser.add_argument('--epochs', type=int, default=20, help='Number of epochs.')
-    parser.add_argument('--verbose', type=int, default=50, help='number of epochs to store model parameters.')
+    parser.add_argument('--verbose', type=int, default=1, help='number of epochs to store model parameters.')
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate.')
     parser.add_argument('--validation', type=bool, default=False, help='True to use validation set, False otherwise')
     parser.add_argument('--restore_epochs', type=int, default=1,
@@ -25,11 +25,10 @@ def parse_args():
 
     # Parameters useful during the visual recs
     parser.add_argument('--cnn_model', nargs='?', default='vgg19', help='Model used for feature extraction.')
-    parser.add_argument('--output_layer', nargs='?', default='block5_conv4',
+    parser.add_argument('--output_layer', nargs='?', default='fc2',
                         help='Output layer for feature extraction.')
     parser.add_argument('--embed_k', type=int, default=64, help='Embedding size.')
-    parser.add_argument('--embed_d_f', type=int, default=20, help='size of low dimensionality for visual features')
-    parser.add_argument('--embed_d_t', type=int, default=20, help='size of low dimensionality for texture features')
+    parser.add_argument('--embed_d', type=int, default=20, help='size of low dimensionality for visual features')
     parser.add_argument('--attention_layers', type=list, default=[64, 1], help='attention layers')
     parser.add_argument('--l_w', type=float, default=0.01, help='embedding regularization')
     parser.add_argument('--l_b', type=float, default=1e-2, help='bias regularization')

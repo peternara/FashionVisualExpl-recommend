@@ -30,8 +30,7 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
         super(ExplVBPR, self).__init__(data, params)
 
         self.embed_k = self.params.embed_k
-        self.embed_d_v = self.params.embed_d_v
-        self.embed_d_t = self.params.embed_d_t
+        self.embed_d = self.params.embed_d
         self.attention_layers = self.params.attention_layers
         self.learning_rate = self.params.lr
         self.l_e = self.params.l_e
@@ -65,59 +64,62 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
 
     def create_semantic_weights(self):
         self.semantic_weights['Bps'] = tf.Variable(
-            self.initializer(shape=[self.dim_visual_feature, 1]), name='Bps', dtype=tf.float32)
+            self.initializer(shape=[self.dim_semantic_feature, 1]), name='Bps', dtype=tf.float32)
         self.semantic_weights['Tus'] = tf.Variable(
-            self.initializer(shape=[self.num_users, self.embed_d_f]),
+            self.initializer(shape=[self.num_users, self.embed_d]),
             name='Tus', dtype=tf.float32)
         self.semantic_weights['Fs'] = tf.Variable(
-            self.visual_features,
+            self.semantic_features,
             name='Fs', dtype=tf.float32, trainable=False)
         self.semantic_weights['Es'] = tf.Variable(
-            self.initializer(shape=[self.dim_visual_feature, self.embed_d_f]),
+            self.initializer(shape=[self.dim_semantic_feature, self.embed_d]),
             name='Es', dtype=tf.float32)
 
     def create_color_weights(self):
         self.color_weights['Bpc'] = tf.Variable(
             self.initializer(shape=[self.dim_color_features, 1]), name='Bpc', dtype=tf.float32)
         self.color_weights['Tuc'] = tf.Variable(
-            self.initializer(shape=[self.num_users, self.color_features]),
+            self.initializer(shape=[self.num_users, self.embed_d]),
             name='Tuc', dtype=tf.float32)
         self.color_weights['Fc'] = tf.Variable(
             self.color_features,
             name='Fc', dtype=tf.float32, trainable=False)
+        self.color_weights['Ec'] = tf.Variable(
+            self.initializer(shape=[self.dim_color_features, self.embed_d]),
+            name='Ec', dtype=tf.float32)
 
     def create_texture_weights(self):
         self.texture_weights['Bpt'] = tf.Variable(
             self.initializer(shape=[self.dim_texture_features, 1]), name='Bpt', dtype=tf.float32)
         self.texture_weights['Tut'] = tf.Variable(
-            self.initializer(shape=[self.num_users, self.embed_d_t]),
+            self.initializer(shape=[self.num_users, self.embed_d]),
             name='Tut', dtype=tf.float32)
         self.texture_weights['Ft'] = tf.Variable(
             self.texture_features,
             name='Ft', dtype=tf.float32, trainable=False)
         self.texture_weights['Et'] = tf.Variable(
-            self.initializer(shape=[self.dim_texture_features, self.embed_d_t]),
+            self.initializer(shape=[self.dim_texture_features, self.embed_d]),
             name='Et', dtype=tf.float32)
 
     def create_edges_weights(self):
-        self.edges_weights['cnn'] = CNN(self.embed_k)
+        self.edges_weights['cnn'] = CNN(self.embed_d)
         self.edges_weights['Bpe'] = tf.Variable(
-            self.initializer(shape=[self.embed_k, 1]), name='Bpe', dtype=tf.float32)
+            self.initializer(shape=[self.embed_d, 1]), name='Bpe', dtype=tf.float32)
         self.edges_weights['Tue'] = tf.Variable(
-            self.initializer(shape=[self.num_users, self.embed_k]),
+            self.initializer(shape=[self.num_users, self.embed_d]),
             name='Tue', dtype=tf.float32)
-        self.edges_weights['Fe'] = np.empty(shape=[self.num_items, self.embed_k], dtype=np.float32)
+        self.edges_weights['Fe'] = np.empty(shape=[self.num_items, self.embed_d], dtype=np.float32)
 
     def create_attention_weights(self):
         for layer in range(len(self.attention_layers)):
             if layer == 0:
                 self.attention_network['l_{}'.format(layer + 1)]['W'] = tf.Variable(
-                        self.initializer_attentive(shape=[self.embed_k, self.attention_layers[layer]]),
+                        self.initializer_attentive(shape=[self.embed_d, self.attention_layers[layer]]),
                         name='W_{}'.format(layer + 1),
                         dtype=tf.float32
                     )
                 self.attention_network['l_{}'.format(layer + 1)]['b'] = tf.Variable(
-                        self.initializer_attentive(shape=[self.layers_component[layer]]),
+                        self.initializer_attentive(shape=[self.attention_layers[layer]]),
                         name='b_{}'.format(layer + 1),
                         dtype=tf.float32
                     )
@@ -128,7 +130,7 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
                     dtype=tf.float32
                 )
                 self.attention_network['l_{}'.format(layer + 1)]['b'] = tf.Variable(
-                    self.initializer_attentive(shape=[self.layers_component[layer]]),
+                    self.initializer_attentive(shape=[self.attention_layers[layer]]),
                     name='b_{}'.format(layer + 1),
                     dtype=tf.float32
                 )
@@ -178,7 +180,7 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
         # user color features profile
         theta_u_c = tf.squeeze(tf.nn.embedding_lookup(self.color_weights['Tuc'], user))
         # user texture features profile
-        theta_u_t = tf.squeeze(tf.nn.embedding_lookup(self.texture_features['Tut'], user))
+        theta_u_t = tf.squeeze(tf.nn.embedding_lookup(self.texture_weights['Tut'], user))
         # user edge features profile
         theta_u_e = tf.squeeze(tf.nn.embedding_lookup(self.edges_weights['Tue'], user))
 
@@ -284,6 +286,7 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
                        self.l_b * tf.nn.l2_loss(beta_i_pos) * 2 + \
                        self.l_b * tf.nn.l2_loss(beta_i_neg) * 2 / 10 + \
                        self.l_e * tf.reduce_sum([tf.nn.l2_loss(self.semantic_weights['Es']),
+                                                 tf.nn.l2_loss(self.color_weights['Ec']),
                                                  tf.nn.l2_loss(self.texture_weights['Et']),
                                                  tf.nn.l2_loss(self.semantic_weights['Bps']),
                                                  tf.nn.l2_loss(self.color_weights['Bpc']),

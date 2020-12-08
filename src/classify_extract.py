@@ -19,7 +19,7 @@ import csv
 def parse_args():
     parser = argparse.ArgumentParser(description="Run classification and feature extraction for original images.")
     parser.add_argument('--gpu', type=int, default=0, help='GPU id to run experiments')
-    parser.add_argument('--dataset', nargs='?', default='small_amazon_clothing', help='dataset path')
+    parser.add_argument('--dataset', nargs='?', default='amazon_clothing', help='dataset path')
     parser.add_argument('--model_name', nargs='?', default='VGG19', help='model for feature extraction')
     parser.add_argument('--num_colors', type=int, default=3, help='number of dominant colors to extract')
     parser.add_argument('--cnn_output_name', nargs='?', default='fc2', help='output layer name')
@@ -69,7 +69,7 @@ def classify_extract():
     print('Loaded dataset from %s' % images_path.format(args.dataset))
 
     # high-level visual features
-    cnn_features_shape = [data.num_samples, *cnn_model.model.output.shape[1:]]
+    cnn_features_shape = [data.num_samples, *cnn_model.model.get_layer(args.cnn_output_name).output.shape[1:]]
     cnn_features = np.empty(shape=cnn_features_shape)
 
     # low-level visual features
@@ -90,7 +90,7 @@ def classify_extract():
 
             # high-level visual features extraction
             out_class = cnn_model.classify(sample=(norm_image, path))
-            cnn_features[i] = cnn_model.model(norm_image, training=False)
+            cnn_features[i] = cnn_model.extract_feature(sample=(norm_image, path))
             writer.writerow(out_class)
 
             # low-level visual feature extraction
@@ -109,7 +109,7 @@ def classify_extract():
     save_np(npy=cnn_features,
             filename=cnn_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
     save_np(npy=colors, filename=color_features_path.format(args.dataset))
-    save_np(npy=textures, filename=texture_features_path.format(args.dataset, args.model_name))
+    save_np(npy=textures, filename=texture_features_path.format(args.dataset, args.model_name.lower()))
 
     end = time.time()
 
