@@ -125,7 +125,7 @@ class BPRMF(RecommenderModel, ABC):
         next_batch = self.data.next_triple_batch()
         steps = 0
         loss = 0
-        it = 0
+        it = 1
         steps_per_epoch = int(self.data.num_users // self.params.batch_size)
 
         start_ep = time()
@@ -137,7 +137,7 @@ class BPRMF(RecommenderModel, ABC):
             steps += 1
             loss_batch = self.train_step(batch)
             loss += loss_batch
-            print('\tBatches: %d/%d - Loss: %f' % (steps, steps_per_epoch, loss_batch))
+            # print('\tBatches: %d/%d - Loss: %f' % (steps, steps_per_epoch, loss_batch))
 
             # epoch is over
             if steps == steps_per_epoch:
@@ -150,7 +150,7 @@ class BPRMF(RecommenderModel, ABC):
                     best_epoch = it
                     best_model = deepcopy(self)
 
-                if it % self.verbose == 0 or it == 1:
+                if (it % self.verbose == 0 or it == 1) and self.verbose != -1:
                     self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
                                          f'weights-{it}-{self.learning_rate}')
                 start_ep = time()
@@ -159,7 +159,7 @@ class BPRMF(RecommenderModel, ABC):
                 steps = 0
 
         print('***************************')
-        print('Start training...')
+        print('Training end...')
         print('***************************')
         self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
                                                  f'recs-{it}-{self.learning_rate}.tsv')

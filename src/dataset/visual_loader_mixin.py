@@ -27,11 +27,12 @@ class VisualLoader:
         self.semantic_features = self.semantic_features / np.max(np.abs(self.semantic_features))
         self.dim_semantic_feature = self.semantic_features.shape[1]
 
-    def process_expl_visual_features(self):
+    def process_color_visual_features(self):
         self.color_features = np.load(color_features_path.format(self.data.params.dataset))
         self.color_features = self.color_features / np.max(np.abs(self.color_features))
         self.dim_color_features = self.color_features.shape[1]
 
+    def process_texture_visual_features(self):
         self.texture_features = np.load(texture_features_path.format(
             self.data.params.dataset,
             self.data.params.cnn_model

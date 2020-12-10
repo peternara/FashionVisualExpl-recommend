@@ -37,7 +37,8 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
         self.l_f = self.params.l_f
 
         self.process_visual_features()
-        self.process_expl_visual_features()
+        self.process_color_visual_features()
+        self.process_texture_visual_features()
 
         # Initialize model parameters
         self.semantic_weights = dict()
@@ -114,18 +115,18 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
         for layer in range(len(self.attention_layers)):
             if layer == 0:
                 self.attention_network['l_{}'.format(layer + 1)]['W'] = tf.Variable(
-                        self.initializer_attentive(shape=[self.embed_d, self.attention_layers[layer]]),
-                        name='W_{}'.format(layer + 1),
-                        dtype=tf.float32
-                    )
+                    self.initializer_attentive(shape=[self.embed_d, self.attention_layers[layer]]),
+                    name='W_{}'.format(layer + 1),
+                    dtype=tf.float32
+                )
                 self.attention_network['l_{}'.format(layer + 1)]['b'] = tf.Variable(
-                        self.initializer_attentive(shape=[self.attention_layers[layer]]),
-                        name='b_{}'.format(layer + 1),
-                        dtype=tf.float32
-                    )
+                    self.initializer_attentive(shape=[self.attention_layers[layer]]),
+                    name='b_{}'.format(layer + 1),
+                    dtype=tf.float32
+                )
             else:
                 self.attention_network['l_{}'.format(layer + 1)]['W'] = tf.Variable(
-                    self.initializer_attentive(shape=[self.attention_layers[layer], self.attention_layers[layer - 1]]),
+                    self.initializer_attentive(shape=[self.attention_layers[layer - 1], self.attention_layers[layer]]),
                     name='W_{}'.format(layer + 1),
                     dtype=tf.float32
                 )
@@ -140,21 +141,22 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
 
         for layer in range(len(self.attention_layers)):
             b_s = tf.matmul(b_s, self.attention_network['l_{}'.format(layer + 1)]['W']) + \
-                            self.attention_network['l_{}'.format(layer + 1)]['b']
+                  self.attention_network['l_{}'.format(layer + 1)]['b']
             b_c = tf.matmul(b_c, self.attention_network['l_{}'.format(layer + 1)]['W']) + \
-                            self.attention_network['l_{}'.format(layer + 1)]['b']
+                  self.attention_network['l_{}'.format(layer + 1)]['b']
             b_t = tf.matmul(b_t, self.attention_network['l_{}'.format(layer + 1)]['W']) + \
-                            self.attention_network['l_{}'.format(layer + 1)]['b']
+                  self.attention_network['l_{}'.format(layer + 1)]['b']
             b_e = tf.matmul(b_e, self.attention_network['l_{}'.format(layer + 1)]['W']) + \
-                            self.attention_network['l_{}'.format(layer + 1)]['b']
+                  self.attention_network['l_{}'.format(layer + 1)]['b']
             if layer == 0:
                 b_s = tf.nn.relu(b_s)
                 b_c = tf.nn.relu(b_c)
                 b_t = tf.nn.relu(b_t)
                 b_e = tf.nn.relu(b_e)
 
-        beta_s, beta_c, beta_t, beta_e = tf.nn.softmax([b_s, b_c, b_t, b_e])
-        return beta_s, beta_c, beta_t, beta_e
+        all_b = tf.concat([b_s, b_c, b_t, b_e], axis=1)
+        all_beta = tf.nn.softmax(all_b, axis=1)
+        return all_beta
 
     def call(self, inputs, training=None, mask=None):
         """
@@ -176,33 +178,38 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
         # user collaborative profile
         gamma_u = tf.squeeze(tf.nn.embedding_lookup(self.Gu, user))
         # user semantic features profile
-        theta_u_s = tf.squeeze(tf.nn.embedding_lookup(self.semantic_weights['Tus'], user))
+        theta_u_s = tf.expand_dims(tf.nn.embedding_lookup(self.semantic_weights['Tus'], user), axis=1)
         # user color features profile
-        theta_u_c = tf.squeeze(tf.nn.embedding_lookup(self.color_weights['Tuc'], user))
+        theta_u_c = tf.expand_dims(tf.nn.embedding_lookup(self.color_weights['Tuc'], user), axis=1)
         # user texture features profile
-        theta_u_t = tf.squeeze(tf.nn.embedding_lookup(self.texture_weights['Tut'], user))
+        theta_u_t = tf.expand_dims(tf.nn.embedding_lookup(self.texture_weights['Tut'], user), axis=1)
         # user edge features profile
-        theta_u_e = tf.squeeze(tf.nn.embedding_lookup(self.edges_weights['Tue'], user))
+        theta_u_e = tf.expand_dims(tf.nn.embedding_lookup(self.edges_weights['Tue'], user), axis=1)
+        all_theta_u = tf.transpose(
+            tf.concat([theta_u_s, theta_u_c, theta_u_t, theta_u_e], axis=1),
+            perm=[1, 0, 2]
+        )
 
         # ITEM
         # item collaborative profile
         gamma_i = tf.squeeze(tf.nn.embedding_lookup(self.Gi, item))
         # item semantic features profile
         semantic_i = tf.squeeze(tf.nn.embedding_lookup(self.semantic_weights['Fs'], item))
-        theta_i_s = tf.matmul(semantic_i, self.semantic_weights['Es'])
+        theta_i_s = tf.expand_dims(tf.matmul(semantic_i, self.semantic_weights['Es']), axis=1)
         # item color features profile
         color_i = tf.squeeze(tf.nn.embedding_lookup(self.color_weights['Fc'], item))
-        theta_i_c = tf.matmul(color_i, self.color_weights['Ec'])
+        theta_i_c = tf.expand_dims(tf.matmul(color_i, self.color_weights['Ec']), axis=1)
         # item texture features profile
         texture_i = tf.squeeze(tf.nn.embedding_lookup(self.texture_weights['Ft'], item))
-        theta_i_t = tf.matmul(texture_i, self.texture_weights['Et'])
+        theta_i_t = tf.expand_dims(tf.matmul(texture_i, self.texture_weights['Et']), axis=1)
         # item edge features profile
-        theta_i_e = self.edges_weights['cnn'](edges, training=True)
+        theta_i_e = tf.expand_dims(self.edges_weights['cnn'](edges, training=True), axis=1)
+        all_theta_i = tf.concat([theta_i_s, theta_i_c, theta_i_t, theta_i_e], axis=1)
         # attention network
-        beta_s, beta_c, beta_t, beta_e = self.propagate_attention(theta_i_s,
-                                                                  theta_i_c,
-                                                                  theta_i_t,
-                                                                  theta_i_e)
+        all_attention = self.propagate_attention(theta_i_s,
+                                                 theta_i_c,
+                                                 theta_i_t,
+                                                 theta_i_e)
 
         # BIASES
         # item collaborative bias
@@ -211,11 +218,9 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
         # score prediction
         xui = beta_i + \
               tf.reduce_sum(gamma_u * gamma_i, 1) + \
-              tf.reduce_sum(theta_u_s * beta_s * theta_i_s, 1) + \
-              tf.reduce_sum(theta_u_c * beta_c * theta_i_c, 1) + \
-              tf.reduce_sum(theta_u_t * beta_t * theta_i_t, 1) + \
-              tf.reduce_sum(theta_u_e * beta_e * theta_i_e, 1) + \
-              tf.squeeze(tf.matmul(semantic_i, self.semantic_weights['Bpf'])) + \
+              tf.reduce_sum(tf.matmul(all_theta_u, tf.transpose(tf.multiply(all_attention, all_theta_i),
+                                                                perm=[1, 2, 0])), 0) + \
+              tf.squeeze(tf.matmul(semantic_i, self.semantic_weights['Bps'])) + \
               tf.squeeze(tf.matmul(color_i, self.color_weights['Bpc'])) + \
               tf.squeeze(tf.matmul(texture_i, self.texture_weights['Bpt'])) + \
               tf.squeeze(tf.matmul(theta_i_e, self.edges_weights['Bpe']))
@@ -323,7 +328,7 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
         next_batch = self.data.next_triple_batch_pipeline()
         steps = 0
         loss = 0
-        it = 0
+        it = 1
         steps_per_epoch = int(self.data.num_users // self.params.batch_size)
 
         start_ep = time()
@@ -335,7 +340,7 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
             steps += 1
             loss_batch = self.train_step(batch)
             loss += loss_batch
-            print('\tBatches: %d/%d - Loss: %f' % (steps, steps_per_epoch, loss_batch))
+            # print('\tBatches: %d/%d - Loss: %f' % (steps, steps_per_epoch, loss_batch))
 
             # epoch is over
             if steps == steps_per_epoch:
@@ -348,7 +353,7 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
                     best_epoch = it
                     best_model = deepcopy(self)
 
-                if it % self.verbose == 0 or it == 1:
+                if (it % self.verbose == 0 or it == 1) and self.verbose != -1:
                     self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
                                          f'weights-{it}-{self.learning_rate}')
                 start_ep = time()
@@ -389,16 +394,37 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
             if im.mode != 'RGB':
                 im = im.convert(mode='RGB')
             im = np.reshape(np.array(im.resize((224, 224))) / np.float32(255), (1, 224, 224, 3))
-            phi = self.cnn(im, training=False)
-            self.Edge[index, :] = phi
+            phi = self.edges_weights['cnn'](im, training=False)
+            self.edges_weights['Fe'][index, :] = phi
+
+        all_theta_u = tf.transpose(tf.concat([
+            tf.expand_dims(self.semantic_weights['Tus'], axis=1),
+            tf.expand_dims(self.color_weights['Tuc'], axis=1),
+            tf.expand_dims(self.texture_weights['Tut'], axis=1),
+            tf.expand_dims(self.edges_weights['Tue'], axis=1)
+        ], axis=1), perm=[1, 0, 2])
+
+        theta_i_s = tf.expand_dims(tf.matmul(self.semantic_weights['Fs'], self.semantic_weights['Es']), axis=1)
+        theta_i_c = tf.expand_dims(tf.matmul(self.color_weights['Fc'], self.color_weights['Ec']), axis=1)
+        theta_i_t = tf.expand_dims(tf.matmul(self.texture_weights['Ft'], self.texture_weights['Et']), axis=1)
+        theta_i_e = tf.expand_dims(tf.Variable(self.edges_weights['Fe']), axis=1)
+        all_theta_i = tf.concat([
+            theta_i_s,
+            theta_i_c,
+            theta_i_t,
+            theta_i_e
+        ], axis=1)
+
+        all_attention = self.propagate_attention(theta_i_s,
+                                                 theta_i_c,
+                                                 theta_i_t,
+                                                 theta_i_e)
 
         return self.Bi + \
                tf.matmul(self.Gu, self.Gi, transpose_b=True) + \
-               tf.matmul(self.Tuf, tf.matmul(self.F, self.Ef), transpose_b=True) + \
-               tf.squeeze(tf.matmul(self.F, self.Bpf)) + \
-               tf.matmul(self.Tuc, self.C, transpose_b=True) + \
-               tf.squeeze(tf.matmul(self.C, self.Bpc)) + \
-               tf.matmul(self.Tut, tf.matmul(self.T, self.Et), transpose_b=True) + \
-               tf.squeeze(tf.matmul(self.T, self.Bpt)) + \
-               tf.matmul(self.Tue, tf.Variable(self.Edge), transpose_b=True) + \
-               tf.squeeze(tf.matmul(self.Tue, self.Bpe))
+               tf.reduce_sum(tf.matmul(all_theta_u, tf.transpose(tf.multiply(all_attention, all_theta_i),
+                                                                    perm=[1, 2, 0])), 0) + \
+               tf.squeeze(tf.matmul(self.semantic_weights['Fs'], self.semantic_weights['Bps'])) + \
+               tf.squeeze(tf.matmul(self.color_weights['Fc'], self.color_weights['Bpc'])) + \
+               tf.squeeze(tf.matmul(self.texture_weights['Ft'], self.texture_weights['Bpt'])) + \
+               tf.squeeze(tf.matmul(self.edges_weights['Fe'], self.edges_weights['Bpe']))

@@ -41,15 +41,15 @@ class VBPR(BPRMF, VisualLoader, ABC):
 
         # Initialize Model Parameters
         self.Bp = tf.Variable(
-            self.initializer(shape=[self.dim_visual_feature, 1]), name='Bp', dtype=tf.float32)
+            self.initializer(shape=[self.dim_semantic_feature, 1]), name='Bp', dtype=tf.float32)
         self.Tu = tf.Variable(
             self.initializer(shape=[self.num_users, self.embed_d]),
             name='Tu', dtype=tf.float32)  # (users, low_embedding_size)
         self.F = tf.Variable(
-            self.visual_features,
+            self.semantic_features,
             name='F', dtype=tf.float32, trainable=False)
         self.E = tf.Variable(
-            self.initializer(shape=[self.dim_visual_feature, self.embed_d]),
+            self.initializer(shape=[self.dim_semantic_feature, self.embed_d]),
             name='E', dtype=tf.float32)  # (items, low_embedding_size)
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)

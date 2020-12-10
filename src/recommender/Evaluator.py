@@ -149,7 +149,7 @@ class Evaluator:
         results = self.model.predict_all().numpy()
         with open(path, 'w') as out:
             for u in range(results.shape[0]):
-                results[u][self.data.train_list[u]] = -np.inf
+                results[u][self.data.training_list[u]] = -np.inf
                 top_k_id = results[u].argsort()[-self.k:][::-1]
                 top_k_score = results[u][top_k_id]
                 for i, value in enumerate(top_k_id):
