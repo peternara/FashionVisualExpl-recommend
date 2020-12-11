@@ -190,26 +190,27 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
         # score prediction
         xui = beta_i + \
               tf.reduce_sum(gamma_u * gamma_i, 1) + \
-              tf.reduce_sum(theta_u_s * theta_i_s, 1) if self.activated_components[0] else 0 + \
-              tf.reduce_sum(theta_u_c * theta_i_c, 1) if self.activated_components[1] else 0 + \
-              tf.reduce_sum(theta_u_e * theta_i_e, 1) if self.activated_components[2] else 0 + \
-              tf.reduce_sum(theta_u_t * theta_i_t, 1) if self.activated_components[3] else 0 + \
-              tf.squeeze(tf.matmul(semantic_i, self.semantic_weights['Bps'])) if self.activated_components[0] else 0 + \
-              tf.squeeze(tf.matmul(color_i, self.color_weights['Bpc'])) if self.activated_components[1] else 0 + \
-              tf.squeeze(tf.matmul(theta_i_e, self.edges_weights['Bpe'])) if self.activated_components[2] else 0 + \
-              tf.squeeze(tf.matmul(texture_i, self.texture_weights['Bpt'])) if self.activated_components[3] else 0
+              (tf.reduce_sum(theta_u_s * theta_i_s, -1) if self.activated_components[0] else 0) + \
+              (tf.reduce_sum(theta_u_c * theta_i_c, -1) if self.activated_components[1] else 0) + \
+              (tf.reduce_sum(theta_u_e * theta_i_e, -1) if self.activated_components[2] else 0) + \
+              (tf.reduce_sum(theta_u_t * theta_i_t, -1) if self.activated_components[3] else 0) + \
+              (tf.squeeze(tf.matmul(semantic_i, self.semantic_weights['Bps']))
+               if self.activated_components[0] else 0) + \
+              (tf.squeeze(tf.matmul(color_i, self.color_weights['Bpc'])) if self.activated_components[1] else 0) + \
+              (tf.squeeze(tf.matmul(theta_i_e, self.edges_weights['Bpe'])) if self.activated_components[2] else 0) + \
+              (tf.squeeze(tf.matmul(texture_i, self.texture_weights['Bpt'])) if self.activated_components[3] else 0)
 
         return xui, \
                gamma_u, \
                gamma_i, \
-               semantic_i if semantic_i else None, \
-               theta_u_s if theta_u_s else None, \
-               color_i if color_i else None, \
-               theta_u_c if theta_u_c else None, \
-               texture_i if texture_i else None, \
-               theta_u_t if theta_u_t else None, \
-               theta_i_e if theta_i_e else None, \
-               theta_u_e if theta_u_e else None, \
+               (semantic_i if semantic_i else None), \
+               (theta_u_s if theta_u_s else None), \
+               (color_i if color_i else None), \
+               (theta_u_c if theta_u_c else None), \
+               (texture_i if texture_i else None), \
+               (theta_u_t if theta_u_t else None), \
+               (theta_i_e if theta_i_e else None), \
+               (theta_u_e if theta_u_e else None), \
                beta_i
 
     def train_step(self, batch):
@@ -268,20 +269,20 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
             reg_loss = self.l_w * tf.reduce_sum([tf.nn.l2_loss(gamma_u)] + \
                                                 [tf.nn.l2_loss(gamma_i_pos)] + \
                                                 [tf.nn.l2_loss(gamma_i_neg)] + \
-                                                [tf.nn.l2_loss(theta_u_s)] if theta_u_s else [] + \
-                                                [tf.nn.l2_loss(theta_u_c)] if theta_u_c else [] + \
-                                                [tf.nn.l2_loss(theta_u_t)] if theta_u_t else [] + \
-                                                [tf.nn.l2_loss(theta_u_e)] if theta_u_e else []) * 2 + \
+                                                ([tf.nn.l2_loss(theta_u_s)] if theta_u_s else []) + \
+                                                ([tf.nn.l2_loss(theta_u_c)] if theta_u_c else []) + \
+                                                ([tf.nn.l2_loss(theta_u_t)] if theta_u_t else []) + \
+                                                ([tf.nn.l2_loss(theta_u_e)] if theta_u_e else [])) * 2 + \
                        self.l_b * tf.nn.l2_loss(beta_i_pos) * 2 + \
                        self.l_b * tf.nn.l2_loss(beta_i_neg) * 2 / 10 + \
                        self.l_e * tf.reduce_sum(
-                            [tf.nn.l2_loss(self.semantic_weights['Es'])] if self.activated_components[0] else [] + \
-                            [tf.nn.l2_loss(self.color_weights['Ec'])] if self.activated_components[1] else [] + \
-                            [tf.nn.l2_loss(self.texture_weights['Et'])] if self.activated_components[3] else [] + \
-                            [tf.nn.l2_loss(self.semantic_weights['Bps'])] if self.activated_components[0] else [] + \
-                            [tf.nn.l2_loss(self.color_weights['Bpc'])] if self.activated_components[1] else [] + \
-                            [tf.nn.l2_loss(self.texture_weights['Bpt'])] if self.activated_components[3] else [] + \
-                            [tf.nn.l2_loss(self.edges_weights['Bpe'])] if self.activated_components[2] else []) * 2 + \
+                        ([tf.nn.l2_loss(self.semantic_weights['Es'])] if self.activated_components[0] else []) + \
+                        ([tf.nn.l2_loss(self.color_weights['Ec'])] if self.activated_components[1] else []) + \
+                        ([tf.nn.l2_loss(self.texture_weights['Et'])] if self.activated_components[3] else []) + \
+                        ([tf.nn.l2_loss(self.semantic_weights['Bps'])] if self.activated_components[0] else []) + \
+                        ([tf.nn.l2_loss(self.color_weights['Bpc'])] if self.activated_components[1] else []) + \
+                        ([tf.nn.l2_loss(self.texture_weights['Bpt'])] if self.activated_components[3] else []) + \
+                        ([tf.nn.l2_loss(self.edges_weights['Bpe'])] if self.activated_components[2] else [])) * 2 + \
                        self.l_f * tf.reduce_sum(
                                         [
                                              tf.nn.l2_loss(layer)
@@ -292,18 +293,18 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
             loss += reg_loss
 
         params = [self.Gu] + [self.Gi] + [self.Bi] + \
-            [self.semantic_weights['Bps']] if self.activated_components[0] else [] + \
-            [self.color_weights['Bpc']] if self.activated_components[1] else [] + \
-            [self.texture_weights['Bpt']] if self.activated_components[3] else [] + \
-            [self.edges_weights['Bpe']] if self.activated_components[2] else [] + \
-            [self.semantic_weights['Es']] if self.activated_components[0] else [] + \
-            [self.color_weights['Ec']] if self.activated_components[1] else [] + \
-            [self.texture_weights['Et']] if self.activated_components[3] else [] + \
-            [self.semantic_weights['Tus']] if self.activated_components[0] else [] + \
-            [self.color_weights['Tuc']] if self.activated_components[1] else [] + \
-            [self.texture_weights['Tut']] if self.activated_components[3] else [] + \
-            [self.edges_weights['Tue']] if self.activated_components[2] else [] + \
-            [layer for layer in self.edges_weights['cnn'].trainable_variables] if self.activated_components[2] else []
+            ([self.semantic_weights['Bps']] if self.activated_components[0] else []) + \
+            ([self.color_weights['Bpc']] if self.activated_components[1] else []) + \
+            ([self.texture_weights['Bpt']] if self.activated_components[3] else []) + \
+            ([self.edges_weights['Bpe']] if self.activated_components[2] else []) + \
+            ([self.semantic_weights['Es']] if self.activated_components[0] else []) + \
+            ([self.color_weights['Ec']] if self.activated_components[1] else []) + \
+            ([self.texture_weights['Et']] if self.activated_components[3] else []) + \
+            ([self.semantic_weights['Tus']] if self.activated_components[0] else []) + \
+            ([self.color_weights['Tuc']] if self.activated_components[1] else []) + \
+            ([self.texture_weights['Tut']] if self.activated_components[3] else []) + \
+            ([self.edges_weights['Tue']] if self.activated_components[2] else []) + \
+            ([layer for layer in self.edges_weights['cnn'].trainable_variables] if self.activated_components[2] else [])
         grads = t.gradient(loss, params)
         self.optimizer.apply_gradients(zip(grads, params))
 
@@ -348,7 +349,7 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
 
                 if (it % self.verbose == 0 or it == 1) and self.verbose != -1:
                     self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                         f'weights-{it}-{self.learning_rate}')
+                                         f'weights-{it}-{self.learning_rate}-{self.activated_components}')
                 start_ep = time()
                 it += 1
                 loss = 0
@@ -358,16 +359,19 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
         print('Training end...')
         print('***************************')
         self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                                 f'recs-{it}-{self.learning_rate}.tsv')
-        save_obj(results, f'{results_dir}/{self.params.dataset}/{self.params.rec}/results-metrics-{self.learning_rate}')
+                                                 f'recs-{it}-{self.learning_rate}-{self.activated_components}.tsv')
+        save_obj(results,
+                 f'{results_dir}/{self.params.dataset}/{self.params.rec}'
+                 f'/results-metrics-{self.learning_rate}-{self.activated_components}')
 
         # Store the best model
         print("Store Best Model at Epoch {0}".format(best_epoch))
         saver_ckpt = tf.train.Checkpoint(optimizer=self.optimizer, model=best_model)
         saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                        f'best-weights-{best_epoch}-{self.learning_rate}')
-        best_model.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                                       f'best-recs-{best_epoch}-{self.learning_rate}.tsv')
+                        f'best-weights-{best_epoch}-{self.learning_rate}-{self.activated_components}')
+        best_model.evaluator.store_recommendation(
+            path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
+                 f'best-recs-{best_epoch}-{self.learning_rate}-{self.activated_components}.tsv')
 
     def predict_all(self):
         """
@@ -413,31 +417,31 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
 
         return self.Bi + \
                tf.matmul(self.Gu, self.Gi, transpose_b=True) + \
-               tf.matmul(self.semantic_weights['Tus'], theta_i_s,
-                         transpose_b=True) if self.activated_components[0] else 0 + \
-               tf.matmul(self.color_weights['Tuc'], theta_i_c,
-                         transpose_b=True) if self.activated_components[1] else 0 + \
-               tf.matmul(self.edges_weights['Tue'], theta_i_e,
-                         transpose_b=True) if self.activated_components[2] else 0 + \
-               tf.matmul(self.texture_weights['Tut'], theta_i_t,
-                         transpose_b=True) if self.activated_components[3] else 0 + \
-               tf.squeeze(
+               (tf.matmul(self.semantic_weights['Tus'], theta_i_s,
+                          transpose_b=True) if self.activated_components[0] else 0) + \
+               (tf.matmul(self.color_weights['Tuc'], theta_i_c,
+                          transpose_b=True) if self.activated_components[1] else 0) + \
+               (tf.matmul(self.edges_weights['Tue'], theta_i_e,
+                          transpose_b=True) if self.activated_components[2] else 0) + \
+               (tf.matmul(self.texture_weights['Tut'], theta_i_t,
+                          transpose_b=True) if self.activated_components[3] else 0) + \
+               (tf.squeeze(
                    tf.matmul(self.semantic_weights['Fs'],
                              self.semantic_weights['Bps']
                              )
-               ) if self.activated_components[0] else 0 + \
-               tf.squeeze(
+               ) if self.activated_components[0] else 0) + \
+               (tf.squeeze(
                    tf.matmul(self.color_weights['Fc'],
                              self.color_weights['Bpc']
                              )
-               ) if self.activated_components[1] else 0 + \
-               tf.squeeze(
+               ) if self.activated_components[1] else 0) + \
+               (tf.squeeze(
                    tf.matmul(self.edges_weights['Fe'],
                              self.edges_weights['Bpe']
                              )
-               ) if self.activated_components[2] else 0 + \
-               tf.squeeze(
+               ) if self.activated_components[2] else 0) + \
+               (tf.squeeze(
                    tf.matmul(self.texture_weights['Ft'],
                              self.texture_weights['Bpt']
                              )
-               ) if self.activated_components[3] else 0
+               ) if self.activated_components[3] else 0)
