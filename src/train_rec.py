@@ -27,7 +27,7 @@ def parse_args():
     # Parameters useful during the visual recs
     parser.add_argument('--cnn_model', nargs='?', default='vgg19', help='Model used for feature extraction.')
     parser.add_argument('--activated_components', type=list, default=[1, 0, 0, 0],
-                        help='How many components to activate')
+                        help='[semantic, color, edges, texture]')
     parser.add_argument('--output_layer', nargs='?', default='fc2',
                         help='Output layer for feature extraction.')
     parser.add_argument('--embed_k', type=int, default=64, help='Embedding size.')

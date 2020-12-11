@@ -158,8 +158,8 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
             semantic_i = tf.squeeze(tf.nn.embedding_lookup(self.semantic_weights['Fs'], item))
             theta_i_s = tf.matmul(semantic_i, self.semantic_weights['Es'])
         else:
-            theta_i_s = 0
             semantic_i = 0
+            theta_i_s = 0
 
         if self.activated_components[1]:
             # item color features profile
@@ -222,7 +222,13 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
         Returns:
             loss value at the current batch
         """
-        user, pos, edge_pos, neg, edge_neg = batch
+        if self.activated_components[2]:
+            user, pos, edge_pos, neg, edge_neg = batch
+        else:
+            user, pos, neg = batch
+            edge_pos = 0
+            edge_neg = 0
+
         with tf.GradientTape() as t:
             # Clean Inference
             xu_pos, \
@@ -236,7 +242,9 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
                 theta_u_t, \
                 edge_i_pos, \
                 theta_u_e, \
-                beta_i_pos = self(inputs=(user, pos, edge_pos), training=True)
+                beta_i_pos = self(inputs=(user,
+                                          pos,
+                                          edge_pos) if self.activated_components[2] else (user, pos), training=True)
 
             xu_neg, \
                 _, \
@@ -249,7 +257,9 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
                 _, \
                 edge_i_neg, \
                 _, \
-                beta_i_neg = self(inputs=(user, neg, edge_neg), training=True)
+                beta_i_neg = self(inputs=(user,
+                                          neg,
+                                          edge_neg) if self.activated_components[2] else (user, neg), training=True)
 
             result = tf.clip_by_value(xu_pos - xu_neg, -80.0, 1e8)
             loss = tf.reduce_sum(tf.nn.softplus(-result))
@@ -265,13 +275,13 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
                        self.l_b * tf.nn.l2_loss(beta_i_pos) * 2 + \
                        self.l_b * tf.nn.l2_loss(beta_i_neg) * 2 / 10 + \
                        self.l_e * tf.reduce_sum(
-                [tf.nn.l2_loss(self.semantic_weights['Es'])] if self.activated_components[0] else [] + \
-                [tf.nn.l2_loss(self.color_weights['Ec'])] if self.activated_components[1] else [] + \
-                [tf.nn.l2_loss(self.texture_weights['Et'])] if self.activated_components[3] else [] + \
-                [tf.nn.l2_loss(self.semantic_weights['Bps'])] if self.activated_components[0] else [] + \
-                [tf.nn.l2_loss(self.color_weights['Bpc'])] if self.activated_components[1] else [] + \
-                [tf.nn.l2_loss(self.texture_weights['Bpt'])] if self.activated_components[3] else [] + \
-                [tf.nn.l2_loss(self.edges_weights['Bpe'])] if self.activated_components[2] else []) * 2 + \
+                            [tf.nn.l2_loss(self.semantic_weights['Es'])] if self.activated_components[0] else [] + \
+                            [tf.nn.l2_loss(self.color_weights['Ec'])] if self.activated_components[1] else [] + \
+                            [tf.nn.l2_loss(self.texture_weights['Et'])] if self.activated_components[3] else [] + \
+                            [tf.nn.l2_loss(self.semantic_weights['Bps'])] if self.activated_components[0] else [] + \
+                            [tf.nn.l2_loss(self.color_weights['Bpc'])] if self.activated_components[1] else [] + \
+                            [tf.nn.l2_loss(self.texture_weights['Bpt'])] if self.activated_components[3] else [] + \
+                            [tf.nn.l2_loss(self.edges_weights['Bpe'])] if self.activated_components[2] else []) * 2 + \
                        self.l_f * tf.reduce_sum(
                                         [
                                              tf.nn.l2_loss(layer)
@@ -400,10 +410,14 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
 
         return self.Bi + \
                tf.matmul(self.Gu, self.Gi, transpose_b=True) + \
-               tf.matmul(self.semantic_weights['Tus'], theta_i_s) if self.activated_components[0] else 0 + \
-               tf.matmul(self.color_weights['Tuc'], theta_i_c) if self.activated_components[1] else 0 + \
-               tf.matmul(self.edges_weights['Tue'], theta_i_e) if self.activated_components[2] else 0 + \
-               tf.matmul(self.texture_weights['Tut'], theta_i_t) if self.activated_components[3] else 0 + \
+               tf.matmul(self.semantic_weights['Tus'], theta_i_s,
+                         transpose_b=True) if self.activated_components[0] else 0 + \
+               tf.matmul(self.color_weights['Tuc'], theta_i_c,
+                         transpose_b=True) if self.activated_components[1] else 0 + \
+               tf.matmul(self.edges_weights['Tue'], theta_i_e,
+                         transpose_b=True) if self.activated_components[2] else 0 + \
+               tf.matmul(self.texture_weights['Tut'], theta_i_t,
+                         transpose_b=True) if self.activated_components[3] else 0 + \
                tf.squeeze(
                    tf.matmul(self.semantic_weights['Fs'],
                              self.semantic_weights['Bps']
