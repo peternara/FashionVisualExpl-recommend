@@ -269,10 +269,11 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
             reg_loss = self.l_w * tf.reduce_sum([tf.nn.l2_loss(gamma_u)] + \
                                                 [tf.nn.l2_loss(gamma_i_pos)] + \
                                                 [tf.nn.l2_loss(gamma_i_neg)] + \
-                                                ([tf.nn.l2_loss(theta_u_s)] if theta_u_s else []) + \
-                                                ([tf.nn.l2_loss(theta_u_c)] if theta_u_c else []) + \
-                                                ([tf.nn.l2_loss(theta_u_t)] if theta_u_t else []) + \
-                                                ([tf.nn.l2_loss(theta_u_e)] if theta_u_e else [])) * 2 + \
+                                                ([tf.nn.l2_loss(theta_u_s)] if self.activated_components[0] else []) + \
+                                                ([tf.nn.l2_loss(theta_u_c)] if self.activated_components[1] else []) + \
+                                                ([tf.nn.l2_loss(theta_u_t)] if self.activated_components[3] else []) + \
+                                                ([tf.nn.l2_loss(theta_u_e)]
+                                                 if self.activated_components[2] else [])) * 2 + \
                        self.l_b * tf.nn.l2_loss(beta_i_pos) * 2 + \
                        self.l_b * tf.nn.l2_loss(beta_i_neg) * 2 / 10 + \
                        self.l_e * tf.reduce_sum(
