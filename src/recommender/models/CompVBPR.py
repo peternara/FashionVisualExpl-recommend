@@ -203,14 +203,14 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
         return xui, \
                gamma_u, \
                gamma_i, \
-               (semantic_i if semantic_i else None), \
-               (theta_u_s if theta_u_s else None), \
-               (color_i if color_i else None), \
-               (theta_u_c if theta_u_c else None), \
-               (texture_i if texture_i else None), \
-               (theta_u_t if theta_u_t else None), \
-               (theta_i_e if theta_i_e else None), \
-               (theta_u_e if theta_u_e else None), \
+               (semantic_i if self.activated_components[0] else None), \
+               (theta_u_s if self.activated_components[0] else None), \
+               (color_i if self.activated_components[1] else None), \
+               (theta_u_c if self.activated_components[1] else None), \
+               (texture_i if self.activated_components[3] else None), \
+               (theta_u_t if self.activated_components[3] else None), \
+               (theta_i_e if self.activated_components[2] else None), \
+               (theta_u_e if self.activated_components[2] else None), \
                beta_i
 
     def train_step(self, batch):
