@@ -33,10 +33,10 @@ def parse_args():
     parser.add_argument('--embed_k', type=int, default=64, help='Embedding size.')
     parser.add_argument('--embed_d', type=int, default=20, help='size of low dimensionality for visual features')
     parser.add_argument('--attention_layers', type=list, default=[64, 1], help='attention layers')
-    parser.add_argument('--l_w', type=float, default=0.01, help='embedding regularization')
-    parser.add_argument('--l_b', type=float, default=1e-2, help='bias regularization')
+    parser.add_argument('--l_w', type=float, default=0, help='embedding regularization')
+    parser.add_argument('--l_b', type=float, default=0, help='bias regularization')
     parser.add_argument('--l_e', type=float, default=0, help='projection matrix regularization')
-    parser.add_argument('--l_f', type=float, default=0.001, help='feature extractor regularization')  # like DVBPR
+    parser.add_argument('--l_f', type=float, default=0, help='feature extractor regularization')  # like DVBPR
 
     return parser.parse_args()
 
