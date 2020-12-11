@@ -14,7 +14,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run train of the Recommender Model.")
     parser.add_argument('--gpu', type=int, default=-1)
     parser.add_argument('--dataset', nargs='?', default='small_amazon_clothing', help='dataset name')
-    parser.add_argument('--rec', nargs='?', default="expl_vbpr", help="set recommendation model")
+    parser.add_argument('--rec', nargs='?', default="comp_vbpr", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=128, help='batch_size')
     parser.add_argument('--top_k', type=int, default=50, help='top-k of recommendation.')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs.')
@@ -26,7 +26,7 @@ def parse_args():
 
     # Parameters useful during the visual recs
     parser.add_argument('--cnn_model', nargs='?', default='vgg19', help='Model used for feature extraction.')
-    parser.add_argument('--activated_components', type=list, default=[1, 0, 0, 0],
+    parser.add_argument('--activated_components', type=list, default=[0, 0, 0, 0],
                         help='[semantic, color, edges, texture]')
     parser.add_argument('--output_layer', nargs='?', default='fc2',
                         help='Output layer for feature extraction.')

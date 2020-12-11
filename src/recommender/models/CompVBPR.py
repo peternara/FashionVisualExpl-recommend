@@ -315,7 +315,10 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
         best_model = self
         best_epoch = self.restore_epochs
         results = {}
-        next_batch = self.data.next_triple_batch_pipeline()
+        if self.activated_components[2]:
+            next_batch = self.data.next_triple_batch_pipeline()
+        else:
+            next_batch = self.data.next_triple_batch()
         steps = 0
         loss = 0
         it = 1
