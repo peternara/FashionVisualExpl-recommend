@@ -17,8 +17,8 @@ def parse_args():
     parser.add_argument('--rec', nargs='?', default="comp_vbpr", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=128, help='batch_size')
     parser.add_argument('--top_k', type=int, default=50, help='top-k of recommendation.')
-    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs.')
-    parser.add_argument('--verbose', type=int, default=-1, help='number of epochs to store model parameters.')
+    parser.add_argument('--epochs', type=int, default=10, help='Number of epochs.')
+    parser.add_argument('--verbose', type=int, default=3, help='number of epochs to store model parameters.')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
     parser.add_argument('--validation', type=bool, default=False, help='True to use validation set, False otherwise')
     parser.add_argument('--restore_epochs', type=int, default=1,

@@ -349,7 +349,7 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
 
                 if (it % self.verbose == 0 or it == 1) and self.verbose != -1:
                     self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                         f'weights-{it}-{self.learning_rate}-{self.activated_components}')
+                                         f'weights-{it}-{self.learning_rate}-{str(self.activated_components)}')
                 start_ep = time()
                 it += 1
                 loss = 0
@@ -359,19 +359,19 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
         print('Training end...')
         print('***************************')
         self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                                 f'recs-{it}-{self.learning_rate}-{self.activated_components}.tsv')
+                                                 f'recs-{it}-{self.learning_rate}-{str(self.activated_components)}.tsv')
         save_obj(results,
                  f'{results_dir}/{self.params.dataset}/{self.params.rec}'
-                 f'/results-metrics-{self.learning_rate}-{self.activated_components}')
+                 f'/results-metrics-{self.learning_rate}-{str(self.activated_components)}')
 
         # Store the best model
         print("Store Best Model at Epoch {0}".format(best_epoch))
         saver_ckpt = tf.train.Checkpoint(optimizer=self.optimizer, model=best_model)
         saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                        f'best-weights-{best_epoch}-{self.learning_rate}-{self.activated_components}')
+                        f'best-weights-{best_epoch}-{self.learning_rate}-{str(self.activated_components)}')
         best_model.evaluator.store_recommendation(
             path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                 f'best-recs-{best_epoch}-{self.learning_rate}-{self.activated_components}.tsv')
+                 f'best-recs-{best_epoch}-{self.learning_rate}-{str(self.activated_components)}.tsv')
 
     def predict_all(self):
         """
