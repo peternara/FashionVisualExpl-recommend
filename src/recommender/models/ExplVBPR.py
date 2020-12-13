@@ -348,7 +348,7 @@ class ExplVBPR(BPRMF, VisualLoader, ABC):
                 self.evaluator.eval(it, results, epoch_text, start_ep)
 
                 # Print and Log the best result (HR@k)
-                if max_hr <= results[it]['hr']:
+                if max_hr < results[it]['hr']:
                     max_hr = results[it]['hr']
                     best_epoch = it
                     best_model = deepcopy(self)
