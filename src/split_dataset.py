@@ -6,7 +6,7 @@ import random
 random.seed(1234)
 
 parser = argparse.ArgumentParser(description="Run dataset splitting.")
-parser.add_argument('--dataset', nargs='?', default='amazon_clothing', help='dataset name')
+parser.add_argument('--dataset', nargs='?', default='tradesy', help='dataset name')
 parser.add_argument('--validation', type=bool, default=False, help='True --> use validation, False --> no validation')
 parser.add_argument('--shuffle', type=bool, default=True, help='dataset shuffle')
 parser.add_argument('--column_stratify', type=list, default=[0], help='list of columns to use for stratification')
