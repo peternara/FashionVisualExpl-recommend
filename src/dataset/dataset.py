@@ -52,9 +52,7 @@ class DataLoader(object):
         # Get number of users and items
         u_ = 0
         items = []
-        read_path = self.path_train_data if train_val_test == 'train' \
-            else self.path_validation_data if train_val_test == 'val' \
-            else self.path_test_data
+        read_path = self.path_train_data if train_val_test == 'train' else self.path_validation_data if train_val_test == 'val' else self.path_test_data
         with open(read_path, "r") as f:
             line = f.readline()
             index = 0
