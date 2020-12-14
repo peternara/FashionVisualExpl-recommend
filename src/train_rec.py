@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='small_amazon_clothing', help='dataset name')
     parser.add_argument('--rec', nargs='?', default="comp_vbpr", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
-    parser.add_argument('--top_k', type=int, default=20, help='top-k of recommendation.')
+    parser.add_argument('--top_k', type=int, default=50, help='top-k of recommendation.')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs.')
     parser.add_argument('--verbose', type=int, default=-1, help='number of epochs to store model parameters.')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
