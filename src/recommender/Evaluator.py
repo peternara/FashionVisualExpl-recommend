@@ -131,7 +131,7 @@ class Evaluator:
 
         res = list(filter(None, res))
         hr, prec, rec, auc, ndcg = (np.array(res).mean(axis=0)).tolist()
-        print_results = "%s \tTrain Time: %s \tValidation Time: %s \tMetrics@%d\n\t\tHR\tPrec\tRec\tAUC\tnDCG\n\t\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f" % (
+        print_results = "%s \tTrain Time: %s \tValidation Time: %s \tMetrics@%d\n\t\tHR\tPrec\tRec\tAUC\tnDCG\n\t\t%f\t%f\t%f\t%f\t%f" % (
             epoch_text,
             datetime.timedelta(seconds=(time() - start_time)),
             datetime.timedelta(seconds=(time() - eval_start_time)),
