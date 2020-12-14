@@ -13,6 +13,7 @@ from config.configs import *
 def parse_args():
     parser = argparse.ArgumentParser(description="Run train of the Recommender Model.")
     parser.add_argument('--gpu', type=int, default=-1)
+    parser.add_argument('--best_metric', type=str, default='hr')
     parser.add_argument('--dataset', nargs='?', default='small_amazon_clothing', help='dataset name')
     parser.add_argument('--rec', nargs='?', default="comp_vbpr", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')

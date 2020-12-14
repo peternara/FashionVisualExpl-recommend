@@ -4,6 +4,7 @@ from multiprocessing import cpu_count
 from time import time
 import datetime
 import heapq
+import math
 
 _feed_dict = None
 _dataset = None
@@ -81,13 +82,16 @@ def _eval_by_user(user, curr_pred):
 
     hr = 1. if sum(r) > 0 else 0.
 
+    # NDCG
+    ndcg = math.log(2) / math.log(position + 2) if position < _K else 0
+
     # PRECISION (P)
     prec = sum(r) / len(r)
 
     # RECALL (R)
     rec = sum(r) / len(pos_predict)
 
-    return hr, prec, rec, auc
+    return hr, prec, rec, auc, ndcg
 
 
 class Evaluator:
@@ -126,8 +130,8 @@ class Evaluator:
             res.append(_eval_by_user(user, current_prediction))
 
         res = list(filter(None, res))
-        hr, prec, rec, auc = (np.array(res).mean(axis=0)).tolist()
-        print("%s \tTrain Time: %s \tValidation Time: %s \tMetrics@%d ==> HR: %.4f \tPrec: %.4f \tRec: %.4f \tAUC: %.4f" % (
+        hr, prec, rec, auc, ndcg = (np.array(res).mean(axis=0)).tolist()
+        print_results = "%s \tTrain Time: %s \tValidation Time: %s \tMetrics@%d\n\t\tHR\tPrec\tRec\tAUC\tnDCG\n\t\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f" % (
             epoch_text,
             datetime.timedelta(seconds=(time() - start_time)),
             datetime.timedelta(seconds=(time() - eval_start_time)),
@@ -135,10 +139,15 @@ class Evaluator:
             hr,
             prec,
             rec,
-            auc))
+            auc,
+            ndcg)
+
+        print(print_results)
 
         if len(epoch_text) != '':
-            results[epoch] = {'hr': hr, 'auc': auc}
+            results[epoch] = {'hr': hr, 'auc': auc, 'p': prec, 'r': rec, 'ndcg': ndcg}
+
+        return print_results
 
     def store_recommendation(self, path=""):
         """

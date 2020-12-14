@@ -117,10 +117,10 @@ class BPRMF(RecommenderModel, ABC):
         return loss.numpy()
 
     def train(self):
-        # initialize the max_hr to memorize the best result
-        max_hr = 0
+        max_metrics = {'hr': 0, 'p': 0, 'r': 0, 'auc': 0, 'ndcg': 0}
         best_model = self
         best_epoch = self.restore_epochs
+        best_epoch_print = 'No best epoch found!'
         results = {}
         next_batch = self.data.next_triple_batch()
         steps = 0
@@ -137,22 +137,22 @@ class BPRMF(RecommenderModel, ABC):
             steps += 1
             loss_batch = self.train_step(batch)
             loss += loss_batch
-            # print('\tBatches: %d/%d - Loss: %f' % (steps, steps_per_epoch, loss_batch))
 
             # epoch is over
             if steps == steps_per_epoch:
                 epoch_text = 'Epoch {0}/{1} \tLoss: {2:.3f}'.format(it, self.params.epochs, loss / steps)
-                self.evaluator.eval(it, results, epoch_text, start_ep)
+                epoch_print = self.evaluator.eval(it, results, epoch_text, start_ep)
 
-                # Print and Log the best result (HR@k)
-                if max_hr < results[it]['hr']:
-                    max_hr = results[it]['hr']
-                    best_epoch = it
-                    best_model = deepcopy(self)
+                for metric in max_metrics.keys():
+                    if max_metrics[metric] <= results[it][metric]:
+                        max_metrics[metric] = results[it][metric]
+                        if metric == self.params.best_metric:
+                            best_epoch, best_model, best_epoch_print = it, deepcopy(self), epoch_print
 
                 if (it % self.verbose == 0 or it == 1) and self.verbose != -1:
                     self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                         f'weights-{it}-{self.learning_rate}')
+                                         f'weights-{it}-{self.learning_rate}-'
+                                         f'{list(self.params.activated_components)}')
                 start_ep = time()
                 it += 1
                 loss = 0
@@ -162,13 +162,27 @@ class BPRMF(RecommenderModel, ABC):
         print('Training end...')
         print('***************************')
         self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                                 f'recs-{it}-{self.learning_rate}.tsv')
-        save_obj(results, f'{results_dir}/{self.params.dataset}/{self.params.rec}/results-metrics-{self.learning_rate}')
+                                                 f'recs-{it}-{self.learning_rate}-'
+                                                 f'{list(self.params.activated_components)}.tsv')
+        save_obj(results,
+                 f'{results_dir}/{self.params.dataset}/{self.params.rec}'
+                 f'/results-metrics-{self.learning_rate}-{list(self.params.activated_components)}')
 
         # Store the best model
         print("Store Best Model at Epoch {0}".format(best_epoch))
+        print(best_epoch_print)
         saver_ckpt = tf.train.Checkpoint(optimizer=self.optimizer, model=best_model)
         saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                        f'best-weights-{best_epoch}-{self.learning_rate}')
-        best_model.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                                       f'best-recs-{best_epoch}-{self.learning_rate}.tsv')
+                        f'best-weights-{best_epoch}-{self.learning_rate}-{list(self.params.activated_components)}')
+        best_model.evaluator.store_recommendation(
+            path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
+                 f'best-recs-{best_epoch}-{self.learning_rate}-{list(self.params.activated_components)}.tsv')
+        print('End Store Best Model!')
+
+        print('Best Values for Each Metric:\nHR\tPrec\tRec\tAUC\tnDCG\n{}\t{}\t{}\t{}\t{}\n'.format(
+            max_metrics['hr'],
+            max_metrics['p'],
+            max_metrics['r'],
+            max_metrics['auc'],
+            max_metrics['ndcg']
+        ))
