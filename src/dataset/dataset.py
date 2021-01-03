@@ -79,6 +79,29 @@ class DataLoader(object):
         else:
             self.test_list.append(items)
 
+    # def all_triple_batches(self):
+    #     r_int = np.random.randint
+    #     actual_used_samples = (self.num_users // self.params.batch_size) * self.params.batch_size
+    #     user_input, pos_input, neg_input = [], [], []
+    #
+    #     for ep in range(self.params.epochs):
+    #         for ab in range(actual_used_samples):
+    #             u = r_int(self.num_users)
+    #             ui = set(self.training_list[u])
+    #             lui = len(ui)
+    #             if lui == self.num_items:
+    #                 continue
+    #             i = list(ui)[r_int(lui)]
+    #
+    #             j = r_int(self.num_items)
+    #             while j in ui:
+    #                 j = r_int(self.num_items)
+    #             user_input.append(np.array(u))
+    #             pos_input.append(np.array(i))
+    #             neg_input.append(np.array(j))
+    #
+    #     return user_input, pos_input, neg_input,
+
     def all_triple_batches(self):
         r_int = np.random.randint
         actual_used_samples = (self.num_users // self.params.batch_size) * self.params.batch_size
