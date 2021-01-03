@@ -7,7 +7,7 @@ import math
 from config.configs import *
 
 parser = argparse.ArgumentParser(description="Run create users-items.")
-parser.add_argument('--dataset', nargs='?', default='amazon_men', help='dataset name')
+parser.add_argument('--dataset', nargs='?', default='amazon_clothing', help='dataset name')
 
 args = parser.parse_args()
 
@@ -36,6 +36,10 @@ df_users_items = pd.read_csv(data_path.format(args.dataset) + 'all.tsv')
 available_interactions = pd.merge(df_users_items, available_images, on='ASIN', how='inner')
 # I'm dropping 404 images
 
+# filtered_k_core = available_interactions.groupby(by='USER').filter(lambda g: len(g) >= args.core)
+# after k-core, some True images might be dropped, so there exist NaN images (i.e., duplicates)
+# which don't have any original image anymore, but they must remain
+
 available_interactions['USER_ID'] = available_interactions.groupby('USER').grouper.group_info[0]
 available_interactions['ITEM_ID'] = available_interactions.groupby('ASIN').grouper.group_info[0]
 available_interactions = available_interactions.sort_values(by='USER_ID')
@@ -54,10 +58,7 @@ print(f'''Sparsity: {1 - (len(available_interactions) / (len(available_interacti
 
 available_interactions.to_csv(data_path.format(args.dataset) + 'all.tsv', index=False, sep='\t')
 
-users_items = pd.concat([available_interactions['USER_ID'],
-                         available_interactions['ITEM_ID'],
-                         available_interactions['REVIEW'],
-                         available_interactions['TIME']], axis=1)
+users_items = pd.concat([available_interactions['USER_ID'], available_interactions['ITEM_ID']], axis=1)
 users_items.to_csv(all_interactions.format(args.dataset), index=False, header=False, sep='\t')
 
 available_interactions = available_interactions.reset_index(drop=True)
