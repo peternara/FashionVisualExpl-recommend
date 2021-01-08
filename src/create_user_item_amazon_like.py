@@ -3,42 +3,19 @@ import pandas as pd
 import argparse
 import shutil
 import sys
-import math
 from config.configs import *
 
 parser = argparse.ArgumentParser(description="Run create users-items.")
-parser.add_argument('--dataset', nargs='?', default='amazon_clothing', help='dataset name')
+parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset name')
 
 args = parser.parse_args()
 
-downloaded_images = os.listdir(images_path.format(args.dataset))  # available images (no duplicates no 404 codes)
-downloaded_images = [file.split('.')[0] for file in downloaded_images]
-downloaded = pd.DataFrame(downloaded_images, columns=['ASIN'])
-downloaded['Downloaded'] = pd.Series([True] * len(downloaded))
+available_images = os.listdir(images_path.format(args.dataset))
+available_images = [file.split('.')[0] for file in available_images]
+available = pd.DataFrame(available_images, columns=['ASIN'])
 
-all_images = pd.read_csv(all_items.format(args.dataset))  # all items
-
-all_images = pd.merge(all_images, downloaded, on='ASIN', how='outer')
-# all items, NaN where we have either duplicates or 404 codes
-
-available_images = all_images.groupby('URL').filter(lambda g: g.isnull().values.sum() < len(g))
-# filter out 404 codes from all images
-
-for i, row in available_images.iterrows():
-    if math.isnan(row['Downloaded']):
-        source_file = images_path.format(args.dataset) + \
-                      str(available_images[(available_images['URL'] == row['URL']) &
-                                           (available_images['Downloaded'])]['ASIN'].iloc[0]) + '.jpg'
-        dest_file = images_path.format(args.dataset) + str(row['ASIN']) + '.jpg'
-        shutil.copy(source_file, dest_file)
-
-df_users_items = pd.read_csv(data_path.format(args.dataset) + 'all.tsv')
-available_interactions = pd.merge(df_users_items, available_images, on='ASIN', how='inner')
-# I'm dropping 404 images
-
-# filtered_k_core = available_interactions.groupby(by='USER').filter(lambda g: len(g) >= args.core)
-# after k-core, some True images might be dropped, so there exist NaN images (i.e., duplicates)
-# which don't have any original image anymore, but they must remain
+df_users_items = pd.read_csv(data_path.format(args.dataset) + 'all.tsv', sep='\t')
+available_interactions = pd.merge(df_users_items, available, on='ASIN', how='inner')
 
 available_interactions['USER_ID'] = available_interactions.groupby('USER').grouper.group_info[0]
 available_interactions['ITEM_ID'] = available_interactions.groupby('ASIN').grouper.group_info[0]
@@ -56,9 +33,11 @@ print(f'''Interactions: {len(available_interactions)}''')
 print(f'''Sparsity: {1 - (len(available_interactions) / (len(available_interactions['USER'].unique()) * 
                                                   len(available_interactions['ASIN'].unique())))}''')
 
-available_interactions.to_csv(data_path.format(args.dataset) + 'all.tsv', index=False, sep='\t')
+available_interactions.to_csv(data_path.format(args.dataset) + 'all_final.tsv', index=False, sep='\t')
 
-users_items = pd.concat([available_interactions['USER_ID'], available_interactions['ITEM_ID']], axis=1)
+users_items = pd.concat([available_interactions['USER_ID'],
+                         available_interactions['ITEM_ID'],
+                         available_interactions['TIME']], axis=1)
 users_items.to_csv(all_interactions.format(args.dataset), index=False, header=False, sep='\t')
 
 available_interactions = available_interactions.reset_index(drop=True)

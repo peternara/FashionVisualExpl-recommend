@@ -15,6 +15,7 @@ dataset_info = data_path + 'stats_after_downloading'
 classes_path = original + 'classes_{1}.csv'
 cnn_features_path = original + 'cnn_features_{1}_{2}.npy'
 color_features_path = original + 'color_features.npy'
+edge_features_path = original + 'edge_features_{1}_{2}.npy'
 texture_features_path = original + 'texture_features_{1}.npy'
 
 features_path = original + 'features/'

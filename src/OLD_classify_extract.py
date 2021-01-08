@@ -14,16 +14,23 @@ import argparse
 import time
 import sys
 import csv
-import cv2
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run classification and feature extraction for original images.")
     parser.add_argument('--gpu', type=int, default=0, help='GPU id to run experiments')
-    parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset path')
+    parser.add_argument('--dataset', nargs='?', default='amazon_clothing', help='dataset path')
     parser.add_argument('--model_name', nargs='?', default='VGG19', help='model for feature extraction')
     parser.add_argument('--num_colors', type=int, default=3, help='number of dominant colors to extract')
     parser.add_argument('--cnn_output_name', nargs='?', default='fc2', help='output layer name')
+    parser.add_argument('--texture_output_layers', type=list, default=[
+        'block1_conv1',
+        'block2_conv1',
+        'block3_conv1',
+        'block4_conv1',
+        'block5_conv1'
+    ], help='output layers for gram matrix')
+    parser.add_argument('--resize_gram', type=tuple, default=(32, 32), help='resize shape for gram matrix')
     parser.add_argument('--print_each', type=int, default=100, help='print each n samples')
 
     return parser.parse_args()
@@ -42,6 +49,8 @@ def classify_extract():
 
     # model setting
     cnn_model = CnnFeatureExtractor(
+        gram_output_layers=args.texture_output_layers,
+        resize_gram=args.resize_gram,
         model_name=args.model_name,
         output_layer=args.cnn_output_name,
         imagenet=read_imagenet_classes_txt(imagenet_classes_path)
@@ -65,7 +74,7 @@ def classify_extract():
 
     # low-level visual features
     colors = np.empty(shape=[data.num_samples, args.num_colors * 3])
-    edges = np.empty(shape=cnn_features_shape)
+    textures = np.empty(shape=[data.num_samples, np.prod(args.resize_gram) * len(args.texture_output_layers)])
 
     # classification and features extraction
     print('Starting classification...\n')
@@ -87,12 +96,11 @@ def classify_extract():
             # low-level visual feature extraction
             edge, color, color_image = low_level_model.extract_color_edges(sample=(original_image, path))
             colors[i] = color
-            edges[i] = cnn_model.extract_feature(
-                sample=(np.expand_dims(data.resize_and_normalize(Image.fromarray(
-                    cv2.cvtColor(edge, cv2.COLOR_GRAY2RGB))), axis=0), path)
-            )
             io.imsave(edges_path.format(args.dataset) + str(i) + '.tiff', edge)
             io.imsave(colors_path.format(args.dataset) + str(i) + '.jpg', color_image)
+
+            texture = cnn_model.extract_texture(sample=(norm_image, path))
+            textures[i] = texture
 
             if (i + 1) % args.print_each == 0:
                 sys.stdout.write('\r%d/%d samples completed' % (i + 1, data.num_samples))
@@ -101,8 +109,7 @@ def classify_extract():
     save_np(npy=cnn_features,
             filename=cnn_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
     save_np(npy=colors, filename=color_features_path.format(args.dataset))
-    save_np(npy=edges,
-            filename=edge_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
+    save_np(npy=textures, filename=texture_features_path.format(args.dataset, args.model_name.lower()))
 
     end = time.time()
 
@@ -111,9 +118,7 @@ def classify_extract():
           cnn_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
     print('Saved classification file to ==> %s' % classes_path.format(args.dataset, args.model_name.lower()))
     print('Saved colors features numpy to ==> %s' % color_features_path.format(args.dataset))
-    print('Saved edges features numpy to ==> %s' % edge_features_path.format(args.dataset,
-                                                                             args.model_name.lower(),
-                                                                             args.cnn_output_name))
+    print('Saved textures features to ==> %s' % texture_features_path.format(args.dataset, args.model_name.lower()))
 
 
 if __name__ == '__main__':

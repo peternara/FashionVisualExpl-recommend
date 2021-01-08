@@ -61,14 +61,16 @@ class LowFeatureExtractor:
         cv2.fillPoly(mask, pts=[max_contour[0]], color=(0, 0, 0))
 
         # dominant colors extraction
-        image_for_clustering = cv2.cvtColor(image, cv2.COLOR_BGR2LAB) / np.float32(255)
+        # image_for_clustering = cv2.cvtColor(image, cv2.COLOR_BGR2LAB) / np.float32(255)
+        image_for_clustering = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) / np.float32(255)
         image_for_clustering = image_for_clustering[(mask == 0).all(axis=2)]
 
         clt = KMeans(n_clusters=self.num_colors, random_state=1234)
         clt.fit(image_for_clustering)
 
         dominant_colors = (clt.cluster_centers_ * 255).astype("uint8")
-        dominant_colors = cv2.cvtColor(np.expand_dims(dominant_colors, axis=0), cv2.COLOR_Lab2RGB)
+        # dominant_colors = cv2.cvtColor(np.expand_dims(dominant_colors, axis=0), cv2.COLOR_Lab2RGB)
+        dominant_colors = np.expand_dims(dominant_colors, axis=0)
         dominant_colors = dominant_colors[0]
 
         hist = _centroid_histogram(topk=self.num_colors)

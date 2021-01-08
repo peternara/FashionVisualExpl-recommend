@@ -2,6 +2,7 @@ from config.configs import *
 from PIL import Image
 import tensorflow as tf
 import numpy as np
+import random
 
 
 class DataLoader(object):
@@ -104,24 +105,34 @@ class DataLoader(object):
 
     def all_triple_batches(self):
         r_int = np.random.randint
-        actual_used_samples = (self.num_users // self.params.batch_size) * self.params.batch_size
         user_input, pos_input, neg_input = [], [], []
+        users_list = list(range(self.num_users))
+        counter_inter = 1
+
+        actual_inter = (sum([len(pos)
+                             for pos in self.training_list]) // self.params.batch_size) * \
+                       self.params.batch_size * self.params.epochs
 
         for ep in range(self.params.epochs):
-            for ab in range(actual_used_samples):
-                u = r_int(self.num_users)
-                ui = set(self.training_list[u])
-                lui = len(ui)
-                if lui == self.num_items:
-                    continue
-                i = list(ui)[r_int(lui)]
+            shuffled_users_list = users_list[:]
+            random.shuffle(shuffled_users_list)
+            for ab in range(self.num_users):
+                u = shuffled_users_list[ab]
+                uis = self.training_list[u]
 
-                j = r_int(self.num_items)
-                while j in ui:
+                for i in uis:
                     j = r_int(self.num_items)
-                user_input.append(np.array(u))
-                pos_input.append(np.array(i))
-                neg_input.append(np.array(j))
+                    while j in uis:
+                        j = r_int(self.num_items)
+
+                    user_input.append(np.array(u))
+                    pos_input.append(np.array(i))
+                    neg_input.append(np.array(j))
+
+                    if counter_inter == actual_inter:
+                        return user_input, pos_input, neg_input,
+                    else:
+                        counter_inter += 1
 
         return user_input, pos_input, neg_input,
 

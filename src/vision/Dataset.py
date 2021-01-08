@@ -14,15 +14,7 @@ class Dataset:
         self.model_name = model_name
         self.resize = resize
 
-    def __len__(self):
-        return self.num_samples
-
-    def __getitem__(self, idx):
-        sample = Image.open(self.directory + self.filenames[idx])
-
-        if sample.mode != 'RGB':
-            sample = sample.convert(mode='RGB')
-
+    def resize_and_normalize(self, sample):
         res_sample = sample.resize(self.resize, resample=Image.BICUBIC)
 
         if self.model_name == 'ResNet50':
@@ -33,5 +25,18 @@ class Dataset:
             norm_sample = tf.keras.applications.resnet.preprocess_input(np.array(res_sample))
         else:
             raise NotImplemented('This feature extractor has not been added yet!')
+
+        return norm_sample
+
+    def __len__(self):
+        return self.num_samples
+
+    def __getitem__(self, idx):
+        sample = Image.open(self.directory + self.filenames[idx])
+
+        if sample.mode != 'RGB':
+            sample = sample.convert(mode='RGB')
+
+        norm_sample = self.resize_and_normalize(sample)
 
         return np.expand_dims(norm_sample, axis=0), np.array(sample), self.filenames[idx]
