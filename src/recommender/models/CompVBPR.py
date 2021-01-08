@@ -328,8 +328,7 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
                                f'-D_{self.params.embed_d}' \
                                f'-K_{self.params.embed_k}' \
                                f'-lr_{self.params.lr}' \
-                               f'-lw_{self.params.l_w}' \
-                               f'-lb_{self.params.l_b}'
+                               f'-reg_{self.params.reg}'
 
         print('***************************')
         print('Start training...')

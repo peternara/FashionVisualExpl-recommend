@@ -259,8 +259,7 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
                                f'-D_{self.params.embed_d}' \
                                f'-K_{self.params.embed_k}' \
                                f'-lr_{self.params.lr}' \
-                               f'-lw_{self.params.l_w}' \
-                               f'-le_{self.params.l_e}' \
+                               f'-reg_{self.params.reg}' \
                                f'-attlayers_{list(self.params.attention_layers)}'
 
         print('***************************')
