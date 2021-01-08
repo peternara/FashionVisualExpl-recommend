@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument('--gpu', type=int, default=-1)
     parser.add_argument('--best_metric', type=str, default='hr')
     parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset name')
-    parser.add_argument('--rec', nargs='?', default="attentive_fashion", help="set recommendation model")
+    parser.add_argument('--rec', nargs='?', default="comp_vbpr", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--top_k', type=int, default=100, help='top-k of recommendation.')
     parser.add_argument('--epochs', type=int, default=10, help='Number of epochs.')
@@ -27,6 +27,10 @@ def parse_args():
                         help='Default is 1: The restore epochs (Must be lower than the epochs)')
 
     # Parameters useful during the visual recs
+    parser.add_argument('--activated_components', nargs='+', type=int, default=[1, 0, 0, 0],
+                        help='[semantic, color, edges, texture]')
+    parser.add_argument('--weight_components', nargs='+', type=float, default=[1.0, .0, .0, .0],
+                        help='[semantic, color, edges, texture]')
     parser.add_argument('--cnn_model', nargs='?', default='vgg19', help='Model used for feature extraction.')
     parser.add_argument('--output_layer', nargs='?', default='fc2',
                         help='Output layer for feature extraction.')
@@ -36,6 +40,7 @@ def parse_args():
     parser.add_argument('--l_w', type=float, default=0, help='embedding regularization')
     parser.add_argument('--l_e', type=float, default=0, help='projection matrix regularization')
     parser.add_argument('--l_b', type=float, default=0, help='bias regularization')
+    parser.add_argument('--l_f', type=float, default=0, help='cnn regularization')
 
     return parser.parse_args()
 

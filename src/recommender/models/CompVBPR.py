@@ -38,7 +38,7 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
 
         # Initialize model parameters
         if self.activated_components[0]:
-            self.process_visual_features()
+            self.process_cnn_visual_features()
             self.semantic_weights = dict()
             self.create_semantic_weights()
         if self.activated_components[1]:
@@ -58,15 +58,15 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
 
     def create_semantic_weights(self):
         self.semantic_weights['Bps'] = tf.Variable(
-            self.initializer(shape=[self.dim_semantic_feature, 1]), name='Bps', dtype=tf.float32)
+            self.initializer(shape=[self.dim_cnn_features, 1]), name='Bps', dtype=tf.float32)
         self.semantic_weights['Tus'] = tf.Variable(
             self.initializer(shape=[self.num_users, self.embed_d]),
             name='Tus', dtype=tf.float32)
         self.semantic_weights['Fs'] = tf.Variable(
-            self.semantic_features,
+            self.cnn_features,
             name='Fs', dtype=tf.float32, trainable=False)
         self.semantic_weights['Es'] = tf.Variable(
-            self.initializer(shape=[self.dim_semantic_feature, self.embed_d]),
+            self.initializer(shape=[self.dim_cnn_features, self.embed_d]),
             name='Es', dtype=tf.float32)
 
     def create_color_weights(self):
@@ -318,16 +318,20 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
         best_epoch = self.restore_epochs
         best_epoch_print = 'No best epoch found!'
         results = {}
-        if self.activated_components[2]:
-            next_batch = self.data.next_triple_batch_pipeline()
-        else:
-            next_batch = self.data.next_triple_batch()
+        next_batch = self.data.next_triple_batch()
         steps = 0
         loss = 0
         it = 1
-        steps_per_epoch = int(self.data.num_users // self.params.batch_size)
+        steps_per_epoch = sum([len(pos) for pos in self.data.training_list]) // self.params.batch_size
 
         start_ep = time()
+
+        directory_parameters = f'batch_{self.params.batch_size}' \
+                               f'-D_{self.params.embed_d}' \
+                               f'-K_{self.params.embed_k}' \
+                               f'-lr_{self.params.lr}' \
+                               f'-lw_{self.params.l_w}' \
+                               f'-lb_{self.params.l_b}'
 
         print('***************************')
         print('Start training...')
@@ -343,15 +347,14 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
                 epoch_print = self.evaluator.eval(it, results, epoch_text, start_ep)
 
                 for metric in max_metrics.keys():
-                    if max_metrics[metric] <= results[it][metric]:
-                        max_metrics[metric] = results[it][metric]
+                    if max_metrics[metric] <= results[it][metric + '_v']:
+                        max_metrics[metric] = results[it][metric + '_v']
                         if metric == self.params.best_metric:
                             best_epoch, best_model, best_epoch_print = it, deepcopy(self), epoch_print
 
                 if (it % self.verbose == 0 or it == 1) and self.verbose != -1:
                     self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                         f'weights-{it}-{self.learning_rate}-'
-                                         f'{list(self.params.activated_components)}')
+                                         f'weights-{it}-{directory_parameters}')
                 start_ep = time()
                 it += 1
                 loss = 0
@@ -361,24 +364,23 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
         print('Training end...')
         print('***************************')
         self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                                 f'recs-{it}-{self.learning_rate}-'
-                                                 f'{list(self.params.activated_components)}.tsv')
+                                                 f'recs-{it}-{directory_parameters}.tsv')
         save_obj(results,
                  f'{results_dir}/{self.params.dataset}/{self.params.rec}'
-                 f'/results-metrics-{self.learning_rate}-{list(self.params.activated_components)}')
+                 f'/results-metrics-{directory_parameters}')
 
         # Store the best model
         print("Store Best Model at Epoch {0}".format(best_epoch))
         print(best_epoch_print)
         saver_ckpt = tf.train.Checkpoint(optimizer=self.optimizer, model=best_model)
         saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                        f'best-weights-{best_epoch}-{self.learning_rate}-{list(self.params.activated_components)}')
+                        f'best-weights-{best_epoch}-{directory_parameters}')
         best_model.evaluator.store_recommendation(
             path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                 f'best-recs-{best_epoch}-{self.learning_rate}-{list(self.params.activated_components)}.tsv')
+                 f'best-recs-{best_epoch}-{directory_parameters}.tsv')
         print('End Store Best Model!')
 
-        print('Best Values for Each Metric:\nHR\tPrec\tRec\tAUC\tnDCG\n{}\t{}\t{}\t{}\t{}\n'.format(
+        print('Best Values for Each Metric (Validation):\nHR\tPrec\tRec\tAUC\tnDCG\n{}\t{}\t{}\t{}\t{}\n'.format(
             max_metrics['hr'],
             max_metrics['p'],
             max_metrics['r'],

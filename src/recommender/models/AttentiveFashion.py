@@ -31,7 +31,7 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
         self.learning_rate = self.params.lr
         self.l_e = self.params.l_e
 
-        self.process_visual_features()
+        self.process_edge_visual_features()
         self.process_color_visual_features()
 
         # Initialize model parameters
@@ -275,7 +275,7 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
             # epoch is over
             if steps == steps_per_epoch:
                 epoch_text = 'Epoch {0}/{1} \tLoss: {2:.3f}'.format(it, self.params.epochs, loss / steps)
-                epoch_print = self.evaluator.eval(it, results, epoch_text, start_ep)
+                epoch_print = self.evaluator.eval(it, results, epoch_text, start_ep, attentive=True)
 
                 for metric in max_metrics.keys():
                     if max_metrics[metric] <= results[it][metric + '_v']:

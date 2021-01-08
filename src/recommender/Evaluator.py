@@ -145,7 +145,7 @@ class Evaluator:
 
         self.model = model
 
-    def eval(self, epoch=0, results={}, epoch_text='', start_time=0):
+    def eval(self, epoch=0, results={}, epoch_text='', start_time=0, attentive=False):
         """
         Runtime Evaluation of Accuracy Performance (top-k)
         :return:
@@ -168,8 +168,11 @@ class Evaluator:
         res_val = []
 
         eval_start_time = time()
-        # all_predictions = self.model.predict_all().numpy()
-        all_predictions, _ = self.model.predict_all()
+
+        if not attentive:
+            all_predictions = self.model.predict_all().numpy()
+        else:
+            all_predictions, _ = self.model.predict_all()
 
         hr_v, prec_v, rec_v, auc_v, ndcg_v = '0', '0', '0', '0', '0'
 
