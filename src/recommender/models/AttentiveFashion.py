@@ -29,7 +29,6 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
         self.embed_d = self.params.embed_d
         self.attention_layers = self.params.attention_layers
         self.learning_rate = self.params.lr
-        self.l_e = self.params.l_e
 
         self.process_edge_visual_features()
         self.process_color_visual_features()
@@ -220,10 +219,10 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
             loss = tf.reduce_sum(tf.nn.softplus(-result))
 
             # Regularization Component
-            reg_loss = self.l_w * tf.reduce_sum([tf.nn.l2_loss(gamma_u),
+            reg_loss = self.reg * tf.reduce_sum([tf.nn.l2_loss(gamma_u),
                                                  tf.nn.l2_loss(gamma_i_pos),
                                                  tf.nn.l2_loss(gamma_i_neg)]) * 2 + \
-                       self.l_e * tf.reduce_sum([tf.nn.l2_loss(self.color_weights['E1c']),
+                       self.reg * tf.reduce_sum([tf.nn.l2_loss(self.color_weights['E1c']),
                                                  tf.nn.l2_loss(self.edges_weights['E1e']),
                                                  tf.nn.l2_loss(self.color_weights['E2c']),
                                                  tf.nn.l2_loss(self.edges_weights['E2e'])]) * 2

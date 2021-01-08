@@ -36,8 +36,7 @@ class BPRMF(RecommenderModel, ABC):
         super(BPRMF, self).__init__(data, params)
         self.embed_k = self.params.embed_k
         self.learning_rate = self.params.lr
-        self.l_w = self.params.l_w
-        self.l_b = self.params.l_b
+        self.reg = self.params.reg
 
         self.evaluator = Evaluator(self, data, params.top_k)
 

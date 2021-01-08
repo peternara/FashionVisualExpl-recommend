@@ -33,8 +33,6 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
         self.activated_components = self.params.activated_components
         self.weight_components = self.params.weight_components
         self.learning_rate = self.params.lr
-        self.l_e = self.params.l_e
-        self.l_f = self.params.l_f
 
         # Initialize model parameters
         if self.activated_components[0]:
@@ -267,7 +265,7 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
             loss = tf.reduce_sum(tf.nn.softplus(-result))
 
             # Regularization Component
-            reg_loss = self.l_w * tf.reduce_sum([tf.nn.l2_loss(gamma_u)] + \
+            reg_loss = self.reg * tf.reduce_sum([tf.nn.l2_loss(gamma_u)] + \
                                                 [tf.nn.l2_loss(gamma_i_pos)] + \
                                                 [tf.nn.l2_loss(gamma_i_neg)] + \
                                                 ([tf.nn.l2_loss(theta_u_s)] if self.activated_components[0] else []) + \
@@ -275,21 +273,21 @@ class CompVBPR(BPRMF, VisualLoader, ABC):
                                                 ([tf.nn.l2_loss(theta_u_t)] if self.activated_components[3] else []) + \
                                                 ([tf.nn.l2_loss(theta_u_e)]
                                                  if self.activated_components[2] else [])) * 2 + \
-                       self.l_b * tf.nn.l2_loss(beta_i_pos) * 2 + \
-                       self.l_b * tf.nn.l2_loss(beta_i_neg) * 2 / 10 + \
-                       self.l_e * tf.reduce_sum(
-                        ([tf.nn.l2_loss(self.semantic_weights['Es'])] if self.activated_components[0] else []) + \
-                        ([tf.nn.l2_loss(self.color_weights['Ec'])] if self.activated_components[1] else []) + \
-                        ([tf.nn.l2_loss(self.texture_weights['Et'])] if self.activated_components[3] else []) + \
-                        ([tf.nn.l2_loss(self.semantic_weights['Bps'])] if self.activated_components[0] else []) + \
-                        ([tf.nn.l2_loss(self.color_weights['Bpc'])] if self.activated_components[1] else []) + \
-                        ([tf.nn.l2_loss(self.texture_weights['Bpt'])] if self.activated_components[3] else []) + \
-                        ([tf.nn.l2_loss(self.edges_weights['Bpe'])] if self.activated_components[2] else [])) * 2 + \
-                       self.l_f * tf.reduce_sum(
-                                        [
-                                             tf.nn.l2_loss(layer)
-                                             for layer in self.edges_weights['cnn'].trainable_variables
-                                             if 'bias' not in layer.name] if self.activated_components[2] else []) * 2
+                       self.reg * tf.nn.l2_loss(beta_i_pos) * 2 + \
+                       self.reg * tf.nn.l2_loss(beta_i_neg) * 2 / 10 + \
+                       self.reg * tf.reduce_sum(
+                ([tf.nn.l2_loss(self.semantic_weights['Es'])] if self.activated_components[0] else []) + \
+                ([tf.nn.l2_loss(self.color_weights['Ec'])] if self.activated_components[1] else []) + \
+                ([tf.nn.l2_loss(self.texture_weights['Et'])] if self.activated_components[3] else []) + \
+                ([tf.nn.l2_loss(self.semantic_weights['Bps'])] if self.activated_components[0] else []) + \
+                ([tf.nn.l2_loss(self.color_weights['Bpc'])] if self.activated_components[1] else []) + \
+                ([tf.nn.l2_loss(self.texture_weights['Bpt'])] if self.activated_components[3] else []) + \
+                ([tf.nn.l2_loss(self.edges_weights['Bpe'])] if self.activated_components[2] else [])) * 2 + \
+                       self.reg * tf.reduce_sum(
+                [
+                    tf.nn.l2_loss(layer)
+                    for layer in self.edges_weights['cnn'].trainable_variables
+                    if 'bias' not in layer.name] if self.activated_components[2] else []) * 2
 
             # Loss to be optimized
             loss += reg_loss
