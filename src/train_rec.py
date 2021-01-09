@@ -36,7 +36,7 @@ def parse_args():
                         help='Output layer for feature extraction.')
     parser.add_argument('--embed_k', type=int, default=128, help='Embedding size.')
     parser.add_argument('--embed_d', type=int, default=20, help='size of low dimensionality for visual features')
-    parser.add_argument('--attention_layers', type=list, default=[64, 1], help='attention layers')
+    parser.add_argument('--attention_layers', nargs='+', type=int, default=[64, 1], help='attention layers')
     parser.add_argument('--reg', type=float, default=0, help='regularization')
 
     return parser.parse_args()
