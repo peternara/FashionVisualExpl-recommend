@@ -226,8 +226,8 @@ class Evaluator:
         attack_name: The name for the attack stored file
         :return:
         """
-        # results = self.model.predict_all().numpy()
-        results = np.array(self.model.predict_all())
+        results = self.model.predict_all().numpy()
+        # results = np.array(self.model.predict_all())
         with open(path, 'w') as out:
             for u in range(results.shape[0]):
                 results[u][self.data.training_list[u]] = -np.inf
@@ -253,4 +253,24 @@ class Evaluator:
                     out.write(
                         str(u) + '\t' + str(value) + '\t' + str(top_k_score[i]) + '\t' + \
                         str(attentions[u, value, 0]) + '\t' + str(attentions[u, value, 1]) + '\n'
+                    )
+
+    def store_recommendation_grads(self, path=""):
+        """
+        Store recommendation list (top-k) in order to be used for the ranksys framework (anonymized)
+        attack_name: The name for the attack stored file
+        :return:
+        """
+        results = self.model.predict_all().numpy()
+        with open(path, 'w') as out:
+            for u in range(results.shape[0]):
+                # print('%d/%d users completed' % (u + 1, self.data.num_users))
+                results[u][self.data.training_list[u]] = -np.inf
+                top_k_id = results[u].argsort()[-self.k:][::-1]
+                user_grads = self.model.get_grads_top_k_user(u, top_k_id.tolist())
+                top_k_score = results[u][top_k_id]
+                for i, value in enumerate(top_k_id):
+                    out.write(
+                        str(u) + '\t' + str(value) + '\t' + str(top_k_score[i]) + '\t' + \
+                        str(user_grads[i, 0]) + '\t' + str(user_grads[i, 1]) + '\n'
                     )
