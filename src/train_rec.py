@@ -18,9 +18,9 @@ def parse_args():
     parser.add_argument('--best_metric', type=str, default='hr')
     parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset name')
     parser.add_argument('--rec', nargs='?', default="grad_fashion", help="set recommendation model")
-    parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
+    parser.add_argument('--batch_size', type=int, default=256, help='batch_size')
     parser.add_argument('--top_k', type=int, default=20, help='top-k of recommendation.')
-    parser.add_argument('--epochs', type=int, default=200, help='Number of epochs.')
+    parser.add_argument('--epochs', type=int, default=3, help='Number of epochs.')
     parser.add_argument('--verbose', type=int, default=-1, help='number of epochs to store model parameters.')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
     parser.add_argument('--validation', type=bool, default=True, help='True to use validation set, False otherwise')
@@ -32,6 +32,8 @@ def parse_args():
                         help='[semantic, color, edges, texture]')
     parser.add_argument('--weight_components', nargs='+', type=float, default=[1.0, .0, .0, .0],
                         help='[semantic, color, edges, texture]')
+    parser.add_argument('--list_of_regs', nargs='+', type=float,
+                        default=[0.00001, 0.0001, 0.001, 0.01, 0.1, 0.0], help='list of regularization terms')
     parser.add_argument('--cnn_model', nargs='?', default='vgg19', help='Model used for feature extraction.')
     parser.add_argument('--output_layer', nargs='?', default='fc2',
                         help='Output layer for feature extraction.')
@@ -51,32 +53,41 @@ def train():
     if not os.path.exists(weight_dir + f'/{args.dataset}/{args.rec}'):
         os.makedirs(weight_dir + f'/{args.dataset}/{args.rec}')
 
-    data = DataLoader(params=args)
-
-    print("TRAINING {0} ON {1}".format(args.rec, args.dataset))
-    print("PARAMETERS:")
-    for arg in vars(args):
-        print("\t- " + str(arg) + " = " + str(getattr(args, arg)))
-    print("\n")
-
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
     os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
-    if args.rec == 'bprmf':
-        model = BPRMF(data, args)
-    elif args.rec == 'vbpr':
-        model = VBPR(data, args)
-    elif args.rec == 'expl_vbpr':
-        model = ExplVBPR(data, args)
-    elif args.rec == 'comp_vbpr':
-        model = CompVBPR(data, args)
-    elif args.rec == 'attentive_fashion':
-        model = AttentiveFashion(data, args)
-    elif args.rec == 'grad_fashion':
-        model = GradFashion(data, args)
-    else:
-        raise NotImplementedError('Not implemented or unknown Recommender Model.')
-    model.train()
+    for it, current_reg in enumerate(list(args.list_of_regs)):
+        print('--------------------------------------------------------------------')
+        print('ITERATION %d/%d WITH REGULARIZATION: %f' % (it + 1, len(list(args.list_of_regs)), current_reg))
+        data = DataLoader(params=args)
+
+        print("Training {0} on {1}".format(args.rec, args.dataset))
+        print("Parameters:")
+
+        # Setting current reg
+        args.reg = current_reg
+
+        for arg in vars(args):
+            print("\t- " + str(arg) + " = " + str(getattr(args, arg)))
+        print("\n")
+
+        if args.rec == 'bprmf':
+            model = BPRMF(data, args)
+        elif args.rec == 'vbpr':
+            model = VBPR(data, args)
+        elif args.rec == 'expl_vbpr':
+            model = ExplVBPR(data, args)
+        elif args.rec == 'comp_vbpr':
+            model = CompVBPR(data, args)
+        elif args.rec == 'attentive_fashion':
+            model = AttentiveFashion(data, args)
+        elif args.rec == 'grad_fashion':
+            model = GradFashion(data, args)
+        else:
+            raise NotImplementedError('Not implemented or unknown Recommender Model.')
+        model.train()
+        print('END REGULARIZATION')
+        print('--------------------------------------------------------------------')
 
 
 if __name__ == '__main__':

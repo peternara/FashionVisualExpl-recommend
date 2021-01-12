@@ -225,6 +225,10 @@ class GradFashion(BPRMF, VisualLoader, ABC):
         print('***************************')
         print('Training end...')
         print('***************************')
+        # STANDARD STORE RECOMMENDATION ON LAST EPOCH
+        self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
+                                                 f'recs-{it - 1}-{directory_parameters}.tsv')
+        # GRADS STORE RECOMMENDATION ON LAST EPOCH
         self.evaluator.store_recommendation_grads(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
                                                        f'recs-{it - 1}-{directory_parameters}.tsv')
         save_obj(results,
@@ -237,6 +241,11 @@ class GradFashion(BPRMF, VisualLoader, ABC):
         saver_ckpt = tf.train.Checkpoint(optimizer=self.optimizer, model=best_model)
         saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
                         f'best-weights-{best_epoch}-{directory_parameters}')
+        # STANDARD STORE RECOMMENDATION ON BEST EPOCH
+        best_model.evaluator.store_recommendation(
+            path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
+                 f'best-recs-{best_epoch}-{directory_parameters}.tsv')
+        # GRADS STORE RECOMMENDATION ON BEST EPOCH
         best_model.evaluator.store_recommendation_grads(
             path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
                  f'best-recs-{best_epoch}-{directory_parameters}.tsv')

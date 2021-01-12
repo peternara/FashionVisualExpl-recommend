@@ -261,16 +261,12 @@ class Evaluator:
         attack_name: The name for the attack stored file
         :return:
         """
-        results = self.model.predict_all().numpy()
         with open(path, 'w') as out:
-            for u in range(results.shape[0]):
-                # print('%d/%d users completed' % (u + 1, self.data.num_users))
-                results[u][self.data.training_list[u]] = -np.inf
-                top_k_id = results[u].argsort()[-self.k:][::-1]
-                user_grads = self.model.get_grads_top_k_user(u, top_k_id.tolist())
-                top_k_score = results[u][top_k_id]
-                for i, value in enumerate(top_k_id):
+            for u in range(self.data.num_users):
+                pos_items_u = self.data.training_list[u] + self.data.validation_list[u] + self.data.test_list[u]
+                user_grads = self.model.get_grads_top_k_user(u, pos_items_u)
+                for i, value in enumerate(pos_items_u):
                     out.write(
-                        str(u) + '\t' + str(value) + '\t' + str(top_k_score[i]) + '\t' + \
+                        str(u) + '\t' + str(value) + '\t' + \
                         str(user_grads[i, 0]) + '\t' + str(user_grads[i, 1]) + '\n'
                     )

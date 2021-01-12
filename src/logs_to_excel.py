@@ -6,8 +6,8 @@ import glob
 def parse_args():
     parser = argparse.ArgumentParser(description="Run logs to excel.")
     parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset name')
-    parser.add_argument('--rec', nargs='?', default="attentive_fashion", help="set recommendation model")
-    parser.add_argument('--custom_match', nargs='?', default='', help='custom string to match')
+    parser.add_argument('--rec', nargs='?', default="comp_vbpr", help="set recommendation model")
+    parser.add_argument('--custom_match', nargs='?', default='1000', help='custom string to match')
     parser.add_argument('--param_to_sort', nargs='+', type=str, default=['lr', 'emk'],
                         help='list of parameters to sort on')
     parser.add_argument('--metrics', nargs='+', type=str, default=['hr', 'prec', 'rec', 'auc', 'ndcg'],
@@ -18,7 +18,7 @@ def parse_args():
 
 def logs_to_excel():
     args = parse_args()
-    all_logs = glob.glob('../logs/' + args.rec + '-' + args.dataset + '*' + args.custom_match + '*')
+    all_logs = glob.glob('../logs/@20/' + args.rec + '-' + args.dataset + '*' + args.custom_match + '*')
     df = pd.DataFrame([], columns=list(args.param_to_sort) + [m + '_v' for m in list(args.metrics)] +
                                   [m + '_t' for m in list(args.metrics)])
 
