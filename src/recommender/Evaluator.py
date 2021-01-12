@@ -264,7 +264,7 @@ class Evaluator:
         with open(path, 'w') as out:
             for u in range(self.data.num_users):
                 pos_items_u = self.data.training_list[u] + self.data.validation_list[u] + self.data.test_list[u]
-                user_grads = self.model.get_grads_top_k_user(u, pos_items_u)
+                user_grads = self.model.get_grads_user(u, pos_items_u)
                 for i, value in enumerate(pos_items_u):
                     out.write(
                         str(u) + '\t' + str(value) + '\t' + \

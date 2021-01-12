@@ -5,9 +5,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from dataset.dataset import DataLoader
 from recommender.models.BPRMF import BPRMF
 from recommender.models.VBPR import VBPR
-from recommender.models.ExplVBPR import ExplVBPR
-from recommender.models.CompVBPR import CompVBPR
-from recommender.models.AttentiveFashion import AttentiveFashion
 from recommender.models.GradFashion import GradFashion
 from config.configs import *
 
@@ -17,7 +14,7 @@ def parse_args():
     parser.add_argument('--gpu', type=int, default=-1)
     parser.add_argument('--best_metric', type=str, default='hr')
     parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset name')
-    parser.add_argument('--rec', nargs='?', default="grad_fashion", help="set recommendation model")
+    parser.add_argument('--rec', nargs='?', default="vbpr", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=256, help='batch_size')
     parser.add_argument('--top_k', type=int, default=20, help='top-k of recommendation.')
     parser.add_argument('--epochs', type=int, default=3, help='Number of epochs.')
@@ -28,10 +25,6 @@ def parse_args():
                         help='Default is 1: The restore epochs (Must be lower than the epochs)')
 
     # Parameters useful during the visual recs
-    parser.add_argument('--activated_components', nargs='+', type=int, default=[1, 0, 0, 0],
-                        help='[semantic, color, edges, texture]')
-    parser.add_argument('--weight_components', nargs='+', type=float, default=[1.0, .0, .0, .0],
-                        help='[semantic, color, edges, texture]')
     parser.add_argument('--list_of_regs', nargs='+', type=float,
                         default=[0.00001, 0.0001, 0.001, 0.01, 0.1, 0.0], help='list of regularization terms')
     parser.add_argument('--cnn_model', nargs='?', default='vgg19', help='Model used for feature extraction.')
@@ -75,12 +68,6 @@ def train():
             model = BPRMF(data, args)
         elif args.rec == 'vbpr':
             model = VBPR(data, args)
-        elif args.rec == 'expl_vbpr':
-            model = ExplVBPR(data, args)
-        elif args.rec == 'comp_vbpr':
-            model = CompVBPR(data, args)
-        elif args.rec == 'attentive_fashion':
-            model = AttentiveFashion(data, args)
         elif args.rec == 'grad_fashion':
             model = GradFashion(data, args)
         else:

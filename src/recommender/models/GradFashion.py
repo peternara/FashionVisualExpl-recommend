@@ -22,7 +22,6 @@ logging.disable(logging.WARNING)
 class GradFashion(BPRMF, VisualLoader, ABC):
 
     def __init__(self, data, params):
-        self.initializer = tf.initializers.GlorotUniform()
         super(GradFashion, self).__init__(data, params)
 
         self.embed_k = self.params.embed_k
@@ -195,9 +194,7 @@ class GradFashion(BPRMF, VisualLoader, ABC):
                                f'-reg_{self.params.reg}' \
                                f'-attlayers_{list(self.params.attention_layers)}'
 
-        print('***************************')
         print('Start training...')
-        print('***************************')
         for batch in next_batch:
             steps += 1
             loss_batch = self.train_step(batch)
@@ -222,9 +219,7 @@ class GradFashion(BPRMF, VisualLoader, ABC):
                 loss = 0
                 steps = 0
 
-        print('***************************')
         print('Training end...')
-        print('***************************')
         # STANDARD STORE RECOMMENDATION ON LAST EPOCH
         self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
                                                  f'recs-{it - 1}-{directory_parameters}.tsv')
@@ -281,7 +276,7 @@ class GradFashion(BPRMF, VisualLoader, ABC):
                                    tf.expand_dims(final_grads[1], axis=1)], axis=1)
         return current_grads
 
-    def get_grads_top_k_user(self, u, top_k_items):
+    def get_grads_user(self, u, top_k_items):
         inputs = [(u, i) for i in top_k_items]
         with concurrent.futures.ThreadPoolExecutor() as executor:
             outputs = executor.map(self.predict_ui_grads, inputs)
