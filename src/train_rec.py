@@ -5,6 +5,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from dataset.dataset import DataLoader
 from recommender.models.BPRMF import BPRMF
 from recommender.models.VBPR import VBPR
+from recommender.models.ACF import ACF
 from recommender.models.GradFashion import GradFashion
 from config.configs import *
 
@@ -68,6 +69,8 @@ def train():
             model = BPRMF(data, args)
         elif args.rec == 'vbpr':
             model = VBPR(data, args)
+        elif args.rec == 'acf':
+            model = ACF(data, args)
         elif args.rec == 'grad_fashion':
             model = GradFashion(data, args)
         else:

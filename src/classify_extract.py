@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset path')
     parser.add_argument('--model_name', nargs='?', default='VGG19', help='model for feature extraction')
     parser.add_argument('--num_colors', type=int, default=3, help='number of dominant colors to extract')
-    parser.add_argument('--cnn_output_name', nargs='?', default='fc2', help='output layer name')
+    parser.add_argument('--cnn_output_name', nargs='?', default='block5_conv4', help='output layer name')
     parser.add_argument('--print_each', type=int, default=100, help='print each n samples')
 
     return parser.parse_args()
@@ -39,6 +39,12 @@ def classify_extract():
         os.makedirs(colors_path.format(args.dataset))
     if not os.path.exists(edges_path.format(args.dataset)):
         os.makedirs(edges_path.format(args.dataset))
+    if not os.path.exists(cnn_features_path_split.format(args.dataset,
+                                                         args.model_name.lower(),
+                                                         args.cnn_output_name)):
+        os.makedirs(cnn_features_path_split.format(args.dataset,
+                                                   args.model_name.lower(),
+                                                   args.cnn_output_name))
 
     # model setting
     cnn_model = CnnFeatureExtractor(
@@ -47,9 +53,9 @@ def classify_extract():
         imagenet=read_imagenet_classes_txt(imagenet_classes_path)
     )
 
-    low_level_model = LowFeatureExtractor(
-        num_colors=args.num_colors
-    )
+    # low_level_model = LowFeatureExtractor(
+    #     num_colors=args.num_colors
+    # )
 
     # dataset setting
     data = Dataset(
@@ -60,12 +66,12 @@ def classify_extract():
     print('Loaded dataset from %s' % images_path.format(args.dataset))
 
     # high-level visual features
-    cnn_features_shape = [data.num_samples, *cnn_model.model.get_layer(args.cnn_output_name).output.shape[1:]]
-    cnn_features = np.empty(shape=cnn_features_shape)
+    # cnn_features_shape = [data.num_samples, *cnn_model.model.get_layer(args.cnn_output_name).output.shape[1:]]
+    # cnn_features = np.empty(shape=cnn_features_shape)
 
     # low-level visual features
-    colors = np.empty(shape=[data.num_samples, args.num_colors * 3])
-    edges = np.empty(shape=cnn_features_shape)
+    # colors = np.empty(shape=[data.num_samples, args.num_colors * 3])
+    # edges = np.empty(shape=cnn_features_shape)
 
     # classification and features extraction
     print('Starting classification...\n')
@@ -81,28 +87,32 @@ def classify_extract():
 
             # high-level visual features extraction
             out_class = cnn_model.classify(sample=(norm_image, path))
-            cnn_features[i] = cnn_model.extract_feature(sample=(norm_image, path))
+            cnn_features = cnn_model.extract_feature(sample=(norm_image, path))
+            save_np(npy=cnn_features,
+                    filename=cnn_features_path_split.format(args.dataset,
+                                                            args.model_name.lower(),
+                                                            args.cnn_output_name) + str(i) + '.npy')
             writer.writerow(out_class)
 
             # low-level visual feature extraction
-            edge, color, color_image = low_level_model.extract_color_edges(sample=(original_image, path))
-            colors[i] = color
-            edges[i] = cnn_model.extract_feature(
-                sample=(np.expand_dims(data.resize_and_normalize(Image.fromarray(
-                    cv2.cvtColor(edge, cv2.COLOR_GRAY2RGB))), axis=0), path)
-            )
-            io.imsave(edges_path.format(args.dataset) + str(i) + '.tiff', edge)
-            io.imsave(colors_path.format(args.dataset) + str(i) + '.jpg', color_image)
+            # edge, color, color_image = low_level_model.extract_color_edges(sample=(original_image, path))
+            # colors[i] = color
+            # edges[i] = cnn_model.extract_feature(
+            #     sample=(np.expand_dims(data.resize_and_normalize(Image.fromarray(
+            #         cv2.cvtColor(edge, cv2.COLOR_GRAY2RGB))), axis=0), path)
+            # )
+            # io.imsave(edges_path.format(args.dataset) + str(i) + '.tiff', edge)
+            # io.imsave(colors_path.format(args.dataset) + str(i) + '.jpg', color_image)
 
             if (i + 1) % args.print_each == 0:
                 sys.stdout.write('\r%d/%d samples completed' % (i + 1, data.num_samples))
                 sys.stdout.flush()
 
-    save_np(npy=cnn_features,
-            filename=cnn_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
-    save_np(npy=colors, filename=color_features_path.format(args.dataset))
-    save_np(npy=edges,
-            filename=edge_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
+    # save_np(npy=cnn_features,
+    #         filename=cnn_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
+    # save_np(npy=colors, filename=color_features_path.format(args.dataset))
+    # save_np(npy=edges,
+    #         filename=edge_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
 
     end = time.time()
 
