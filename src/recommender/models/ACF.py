@@ -41,7 +41,14 @@ class ACF(BPRMF, VisualLoader, ABC):
         self.layers_component = self.params.layers_component
         self.layers_item = self.params.layers_item
 
-        self.get_feature_size(data)
+        self.feature_shape = self.get_feature_size(data)
+
+        self.directory_parameters = f'batch_{self.params.batch_size}' \
+                                    f'-K_{self.params.embed_k}' \
+                                    f'-lr_{self.params.lr}' \
+                                    f'-reg_{self.params.reg}' \
+                                    f'-comp_{list(self.params.layers_component)}' \
+                                    f'-item_{list(self.params.layers_item)}'
 
         # Initialize Model Parameters
         self.Pi = tf.Variable(self.initializer(shape=[self.num_items, self.embed_k]), name='Pi', dtype=tf.float32)
@@ -134,9 +141,9 @@ class ACF(BPRMF, VisualLoader, ABC):
                                  self.feature_shape[3]), dtype=np.float32)
 
         for index, p in enumerate(list_of_pos):
-            f_i_np[index] = np.load(cnn_features_path.format(self.data.params.dataset,
-                                                             self.data.params.cnn_model,
-                                                             self.data.params.output_layer) + str(p)
+            f_i_np[index] = np.load(cnn_features_path_split.format(self.data.params.dataset,
+                                                                   self.data.params.cnn_model,
+                                                                   self.data.params.output_layer) + str(p)
                                     + '.npy').reshape((self.feature_shape[1] * self.feature_shape[2],
                                                        self.feature_shape[3]))
 
@@ -210,8 +217,8 @@ class ACF(BPRMF, VisualLoader, ABC):
         Returns:
             The matrix of predicted values.
         """
-        all_pos_u = [{'u': i, 'u_pos': self.data.train_list[i] + self.data.validation_list[i]}
-                     for i, _ in enumerate(self.data.train_list)]
+        all_pos_u = [{'u': i, 'u_pos': self.data.training_list[i] + self.data.validation_list[i]}
+                     for i, _ in enumerate(self.data.training_list)]
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             output = executor.map(self.calculate_beta_alpha, all_pos_u)

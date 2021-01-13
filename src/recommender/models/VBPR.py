@@ -32,6 +32,12 @@ class VBPR(BPRMF, VisualLoader, ABC):
         self.embed_d = self.params.embed_d
         self.learning_rate = self.params.lr
 
+        self.directory_parameters = f'batch_{self.params.batch_size}' \
+                                    f'-D_{self.params.embed_d}' \
+                                    f'-K_{self.params.embed_k}' \
+                                    f'-lr_{self.params.lr}' \
+                                    f'-reg_{self.params.reg}'
+
         self.process_cnn_visual_features()
 
         # Initialize Model Parameters

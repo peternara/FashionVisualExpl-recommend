@@ -39,6 +39,11 @@ class BPRMF(RecommenderModel, ABC):
 
         self.evaluator = Evaluator(self, data, params.top_k)
 
+        self.directory_parameters = f'batch_{self.params.batch_size}' \
+                                    f'-K_{self.params.embed_k}' \
+                                    f'-lr_{self.params.lr}' \
+                                    f'-reg_{self.params.reg}'
+
         # Initialize Model Parameters
         self.Bi = tf.Variable(tf.zeros(self.num_items), name='Bi', dtype=tf.float32)
         self.Gu = tf.Variable(self.initializer(shape=[self.num_users, self.embed_k]), name='Gu', dtype=tf.float32)
@@ -133,13 +138,6 @@ class BPRMF(RecommenderModel, ABC):
 
         start_ep = time()
 
-        directory_parameters = f'batch_{self.params.batch_size}' \
-                               f'-D_{self.params.embed_d}' \
-                               f'-K_{self.params.embed_k}' \
-                               f'-lr_{self.params.lr}' \
-                               f'-reg_{self.params.reg}' \
-                               f'-attlayers_{list(self.params.attention_layers)}'
-
         print('Start training...')
         for batch in next_batch:
             steps += 1
@@ -159,7 +157,7 @@ class BPRMF(RecommenderModel, ABC):
 
                 if (it % self.verbose == 0 or it == 1) and self.verbose != -1:
                     self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                         f'weights-{it}-{directory_parameters}')
+                                         f'weights-{it}-{self.directory_parameters}')
                 start_ep = time()
                 it += 1
                 loss = 0
@@ -168,21 +166,21 @@ class BPRMF(RecommenderModel, ABC):
         print('Training end...')
         # STANDARD STORE RECOMMENDATION ON LAST EPOCH
         self.evaluator.store_recommendation(path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                                                 f'recs-{it - 1}-{directory_parameters}.tsv')
+                                                 f'recs-{it - 1}-{self.directory_parameters}.tsv')
         save_obj(results,
                  f'{results_dir}/{self.params.dataset}/{self.params.rec}'
-                 f'/results-metrics-{directory_parameters}')
+                 f'/results-metrics-{self.directory_parameters}')
 
         # Store the best model
         print("Store Best Model at Epoch {0}".format(best_epoch))
         print(best_epoch_print)
         saver_ckpt = tf.train.Checkpoint(optimizer=self.optimizer, model=best_model)
         saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                        f'best-weights-{best_epoch}-{directory_parameters}')
+                        f'best-weights-{best_epoch}-{self.directory_parameters}')
         # STANDARD STORE RECOMMENDATION ON BEST EPOCH
         best_model.evaluator.store_recommendation(
             path=f'{results_dir}/{self.params.dataset}/{self.params.rec}/' + \
-                 f'best-recs-{best_epoch}-{directory_parameters}.tsv')
+                 f'best-recs-{best_epoch}-{self.directory_parameters}.tsv')
         print('End Store Best Model!')
 
         print('Best Values for Each Metric:\nHR\tPrec\tRec\tAUC\tnDCG\n{}\t{}\t{}\t{}\t{}\n'.format(

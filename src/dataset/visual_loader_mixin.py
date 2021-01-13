@@ -27,6 +27,14 @@ class VisualLoader:
         self.cnn_features = self.cnn_features / np.max(np.abs(self.cnn_features))
         self.dim_cnn_features = self.cnn_features.shape[1]
 
+    @staticmethod
+    def get_feature_size(data):
+        path = cnn_features_path_split.format(data.params.dataset,
+                                              data.params.cnn_model,
+                                              data.params.output_layer) + '0.npy'
+        emb_image = np.load(path)
+        return emb_image.shape
+
     def process_color_visual_features(self):
         self.color_features = np.load(color_features_path.format(self.data.params.dataset))
         self.color_features = self.color_features / np.max(np.abs(self.color_features))
