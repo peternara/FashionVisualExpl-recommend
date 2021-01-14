@@ -26,7 +26,8 @@ class GradFashion(BPRMF, VisualLoader, ABC):
 
         self.embed_k = self.params.embed_k
         self.embed_d = self.params.embed_d
-        self.attention_layers = self.params.attention_layers
+        self.embed_color = self.params.embed_color
+        self.embed_edges = self.params.embed_edges
         self.learning_rate = self.params.lr
 
         self.process_edge_visual_features()
@@ -57,17 +58,23 @@ class GradFashion(BPRMF, VisualLoader, ABC):
         self.color_weights['Fc'] = tf.Variable(
             self.color_features,
             name='Fc', dtype=tf.float32, trainable=False)
+        self.color_weights['Ec'] = tf.Variable(
+            self.initializer(shape=[self.dim_color_features, self.embed_color]),
+            name='Ec', dtype=tf.float32)
 
     def create_edges_features(self):
         self.edges_weights['Fe'] = tf.Variable(
             self.edge_features,
             name='Fe', dtype=tf.float32, trainable=False)
+        self.edges_weights['Ee'] = tf.Variable(
+            self.initializer(shape=[self.dim_edge_features, self.embed_edges]),
+            name='Ee', dtype=tf.float32)
 
     def create_visual_profile(self):
         self.visual_profile['Bp'] = tf.Variable(
-            self.initializer(shape=[self.dim_color_features + self.dim_edge_features, 1]), name='Bps', dtype=tf.float32)
+            self.initializer(shape=[self.embed_color + self.embed_edges, 1]), name='Bps', dtype=tf.float32)
         self.visual_profile['E'] = tf.Variable(
-            self.initializer(shape=[self.dim_color_features + self.dim_edge_features, self.embed_d]),
+            self.initializer(shape=[self.embed_color + self.embed_edges, self.embed_d]),
             name='E', dtype=tf.float32)
         self.visual_profile['Tu'] = tf.Variable(
             self.initializer(shape=[self.num_users, self.embed_d]),
@@ -102,7 +109,10 @@ class GradFashion(BPRMF, VisualLoader, ABC):
             gamma_i = tf.squeeze(tf.nn.embedding_lookup(self.Gi, item))
             color_i = tf.squeeze(tf.nn.embedding_lookup(self.color_weights['Fc'], item))
             edges_i = tf.squeeze(tf.nn.embedding_lookup(self.edges_weights['Fe'], item))
-            visual_features_i = tf.concat([color_i, edges_i], axis=1)
+            visual_features_i = tf.concat([
+                tf.matmul(color_i, self.color_weights['Ec']),
+                tf.matmul(edges_i, self.edges_weights['Ee'])
+            ], axis=1)
             theta_i = tf.matmul(visual_features_i, self.visual_profile['E'])
 
             # BIASES
@@ -164,7 +174,9 @@ class GradFashion(BPRMF, VisualLoader, ABC):
                                                  tf.nn.l2_loss(theta_u)]) * 2 + \
                        self.reg * tf.reduce_sum([tf.nn.l2_loss(beta_pos),
                                                  tf.nn.l2_loss(beta_neg)]) * 2 + \
-                       self.reg * tf.reduce_sum([tf.nn.l2_loss(self.visual_profile['E']),
+                       self.reg * tf.reduce_sum([tf.nn.l2_loss(self.color_weights['Ec']),
+                                                 tf.nn.l2_loss(self.edges_weights['Ee']),
+                                                 tf.nn.l2_loss(self.visual_profile['E']),
                                                  tf.nn.l2_loss(self.visual_profile['Bp'])]) * 2
 
             # Loss to be optimized
@@ -172,6 +184,7 @@ class GradFashion(BPRMF, VisualLoader, ABC):
 
         params = [
             self.Gu, self.Gi, self.Bi,
+            self.color_weights['Ec'], self.edges_weights['Ee'],
             self.visual_profile['Tu'], self.visual_profile['E'], self.visual_profile['Bp']
         ]
         grads = t.gradient(loss, params)
@@ -258,7 +271,10 @@ class GradFashion(BPRMF, VisualLoader, ABC):
         with tf.GradientTape() as t:
             color_i = tf.Variable(tf.expand_dims(self.color_weights['Fc'][i], 0))
             edges_i = tf.Variable(tf.expand_dims(self.edges_weights['Fe'][i], 0))
-            visual_features_i = tf.concat([color_i, edges_i], axis=1)
+            visual_features_i = tf.concat([
+                tf.matmul(color_i, self.color_weights['Ec']),
+                tf.matmul(edges_i, self.edges_weights['Ee'])
+            ], axis=1)
             theta_i = tf.matmul(visual_features_i, self.visual_profile['E'])
 
             # score prediction
@@ -292,7 +308,10 @@ class GradFashion(BPRMF, VisualLoader, ABC):
         Returns:
             The matrix of predicted values.
         """
-        visual_features_i = tf.concat([self.color_weights['Fc'], self.edges_weights['Fe']], axis=1)
+        visual_features_i = tf.concat([
+            tf.matmul(self.color_weights['Fc'], self.color_weights['Ec']),
+            tf.matmul(self.edges_weights['Fe'], self.edges_weights['Ee'])
+        ], axis=1)
         theta_i = tf.matmul(visual_features_i, self.visual_profile['E'])
         preds = self.Bi + \
                 tf.matmul(self.Gu, self.Gi, transpose_b=True) + \

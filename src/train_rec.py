@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument('--gpu', type=int, default=-1)
     parser.add_argument('--best_metric', type=str, default='hr')
     parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset name')
-    parser.add_argument('--rec', nargs='?', default="bprmf", help="set recommendation model")
+    parser.add_argument('--rec', nargs='?', default="grad_fashion", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=256, help='batch_size')
     parser.add_argument('--top_k', type=int, default=20, help='top-k of recommendation.')
     parser.add_argument('--epochs', type=int, default=200, help='Number of epochs.')
@@ -35,6 +35,8 @@ def parse_args():
                         help='Output layer for feature extraction.')
     parser.add_argument('--embed_k', type=int, default=32, help='Embedding size.')
     parser.add_argument('--embed_d', type=int, default=20, help='size of low dimensionality for visual features')
+    parser.add_argument('--embed_color', type=int, default=2048, help='size of low dimensionality for color features')
+    parser.add_argument('--embed_edges', type=int, default=2048, help='size of low dimensionality for edges features')
     parser.add_argument('--reg', type=float, default=0, help='regularization')
 
     return parser.parse_args()
