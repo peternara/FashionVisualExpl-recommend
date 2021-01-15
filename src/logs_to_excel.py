@@ -6,7 +6,7 @@ import glob
 def parse_args():
     parser = argparse.ArgumentParser(description="Run logs to excel.")
     parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset name')
-    parser.add_argument('--rec', nargs='?', default="bprmf", help="set recommendation model")
+    parser.add_argument('--rec', nargs='?', default="grad_fashion", help="set recommendation model")
     parser.add_argument('--param_to_sort', nargs='+', type=str, default=['lr', 'emk', 'reg'],
                         help='list of parameters to sort on')
     parser.add_argument('--regs', nargs='+', type=float, default=[0.0, 0.00001, 0.0001, 0.001, 0.01, 0.1],
@@ -59,7 +59,7 @@ def logs_to_excel():
         )
     ).reset_index(drop=True)
     df.to_csv(
-        '../logs/' + args.rec + '_' + args.dataset + ('_' + args.custom_match if args.custom_match else '') + '.tsv',
+        '../logs/' + args.rec + '_' + args.dataset + '.tsv',
         sep='\t', header=False, index=False)
 
 
