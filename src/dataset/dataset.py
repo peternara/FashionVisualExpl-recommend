@@ -80,29 +80,6 @@ class DataLoader(object):
         else:
             self.test_list.append(items)
 
-    # def all_triple_batches(self):
-    #     r_int = np.random.randint
-    #     actual_used_samples = (self.num_users // self.params.batch_size) * self.params.batch_size
-    #     user_input, pos_input, neg_input = [], [], []
-    #
-    #     for ep in range(self.params.epochs):
-    #         for ab in range(actual_used_samples):
-    #             u = r_int(self.num_users)
-    #             ui = set(self.training_list[u])
-    #             lui = len(ui)
-    #             if lui == self.num_items:
-    #                 continue
-    #             i = list(ui)[r_int(lui)]
-    #
-    #             j = r_int(self.num_items)
-    #             while j in ui:
-    #                 j = r_int(self.num_items)
-    #             user_input.append(np.array(u))
-    #             pos_input.append(np.array(i))
-    #             neg_input.append(np.array(j))
-    #
-    #     return user_input, pos_input, neg_input,
-
     def all_triple_batches(self):
         r_int = np.random.randint
         user_input, pos_input, neg_input = [], [], []
@@ -161,10 +138,41 @@ class DataLoader(object):
 
         return data
 
+    # this is only for evaluation
+    def next_image_batch_pipeline(self):
+        def load_func(i):
+            b = tf.py_function(
+                self.read_image,
+                (i,),
+                (np.int32, np.float32)
+            )
+            return b
+
+        all_images = list(range(self.num_items))
+        data = tf.data.Dataset.from_tensor_slices(all_images)
+        data = data.map(load_func, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        data = data.batch(batch_size=self.params.batch_eval)
+        data = data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+        return data
+
+    # this is only for evaluation
+    def read_image(self, item):
+        # load positive image
+        im = Image.open(edges_path.format(self.params.dataset) + str(item.numpy()) + '.tiff').convert('L')
+
+        try:
+            im.load()
+        except ValueError:
+            print(f'Image at path {item}.jpg was not loaded correctly!')
+
+        im = np.array(im.resize((224, 224))).reshape((224, 224, 1)) / np.float32(255)
+        return item, im
+
     def read_images_triple(self, user, pos, neg):
         # load positive and negative item images
-        im_pos = Image.open(edges_path.format(self.params.dataset) + str(pos.numpy()) + '.tiff')
-        im_neg = Image.open(edges_path.format(self.params.dataset) + str(neg.numpy()) + '.tiff')
+        im_pos = Image.open(edges_path.format(self.params.dataset) + str(pos.numpy()) + '.tiff').convert('L')
+        im_neg = Image.open(edges_path.format(self.params.dataset) + str(neg.numpy()) + '.tiff').convert('L')
 
         try:
             im_pos.load()
@@ -175,12 +183,12 @@ class DataLoader(object):
             im_neg.load()
         except ValueError:
             print(f'Image at path {neg}.jpg was not loaded correctly!')
+        #
+        # if im_pos.mode != 'RGB':
+        #     im_pos = im_pos.convert(mode='RGB')
+        # if im_neg.mode != 'RGB':
+        #     im_neg = im_neg.convert(mode='RGB')
 
-        if im_pos.mode != 'RGB':
-            im_pos = im_pos.convert(mode='RGB')
-        if im_neg.mode != 'RGB':
-            im_neg = im_neg.convert(mode='RGB')
-
-        im_pos = np.array(im_pos.resize((224, 224))) / np.float32(255)
-        im_neg = np.array(im_neg.resize((224, 224))) / np.float32(255)
+        im_pos = np.array(im_pos.resize((224, 224))).reshape((224, 224, 1)) / np.float32(255)
+        im_neg = np.array(im_neg.resize((224, 224))).reshape((224, 224, 1)) / np.float32(255)
         return user.numpy(), pos.numpy(), im_pos, neg.numpy(), im_neg

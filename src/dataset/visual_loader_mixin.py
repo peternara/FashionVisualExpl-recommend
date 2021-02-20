@@ -16,6 +16,9 @@ class VisualLoader:
         self.edge_features = None
         self.dim_edge_features = None
 
+        self.class_features = None
+        self.dim_class_features = None
+
     def process_cnn_visual_features(self):
         self.cnn_features = \
             np.load(cnn_features_path.format(
@@ -36,9 +39,13 @@ class VisualLoader:
         return emb_image.shape
 
     def process_color_visual_features(self):
-        self.color_features = np.load(color_features_path.format(self.data.params.dataset))
+        self.color_features = np.load(hist_color_features_path.format(self.data.params.dataset))
         self.color_features = self.color_features / np.max(np.abs(self.color_features))
         self.dim_color_features = self.color_features.shape[1]
+
+    def process_class_visual_features(self):
+        self.class_features = np.load(class_features_path.format(self.data.params.dataset))
+        self.dim_class_features = self.class_features.shape[1]
 
     def process_edge_visual_features(self):
         self.edge_features = \

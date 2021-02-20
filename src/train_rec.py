@@ -7,19 +7,21 @@ from recommender.models.BPRMF import BPRMF
 from recommender.models.VBPR import VBPR
 from recommender.models.ACF import ACF
 from recommender.models.GradFashion import GradFashion
+from recommender.models.AttentiveFashion import AttentiveFashion
 from config.configs import *
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run train of the Recommender Model.")
     parser.add_argument('--gpu', type=int, default=-1)
-    parser.add_argument('--best_metric', type=str, default='hr')
+    parser.add_argument('--best_metric', type=str, default='ndcg')
     parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset name')
-    parser.add_argument('--rec', nargs='?', default="grad_fashion", help="set recommendation model")
+    parser.add_argument('--rec', nargs='?', default="attentive_fashion", help="set recommendation model")
     parser.add_argument('--batch_size', type=int, default=256, help='batch_size')
     parser.add_argument('--top_k', type=int, default=20, help='top-k of recommendation.')
     parser.add_argument('--epochs', type=int, default=200, help='Number of epochs.')
     parser.add_argument('--verbose', type=int, default=-1, help='number of epochs to store model parameters.')
+    parser.add_argument('--batch_eval', type=int, default=128, help='batch size on items for evaluation.')
     parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate.')
     parser.add_argument('--validation', type=bool, default=True, help='True to use validation set, False otherwise')
     parser.add_argument('--restore_epochs', type=int, default=1,
@@ -30,13 +32,12 @@ def parse_args():
                         default=[0.0, 0.00001, 0.0001, 0.001, 0.01, 0.1], help='list of regularization terms')
     parser.add_argument('--layers_component', type=list, default=[64, 1], help='list component level layers for ACF')
     parser.add_argument('--layers_item', type=list, default=[64, 1], help='list item level layers for ACF')
+    parser.add_argument('--attention_layers', type=list, default=[64, 1], help='list of attention layers')
     parser.add_argument('--cnn_model', nargs='?', default='vgg19', help='Model used for feature extraction.')
     parser.add_argument('--output_layer', nargs='?', default='fc2',
                         help='Output layer for feature extraction.')
     parser.add_argument('--embed_k', type=int, default=32, help='Embedding size.')
     parser.add_argument('--embed_d', type=int, default=20, help='size of low dimensionality for visual features')
-    parser.add_argument('--embed_color', type=int, default=2048, help='size of low dimensionality for color features')
-    parser.add_argument('--embed_edges', type=int, default=2048, help='size of low dimensionality for edges features')
     parser.add_argument('--reg', type=float, default=0, help='regularization')
 
     return parser.parse_args()
@@ -76,6 +77,8 @@ def train():
             model = ACF(data, args)
         elif args.rec == 'grad_fashion':
             model = GradFashion(data, args)
+        elif args.rec == 'attentive_fashion':
+            model = AttentiveFashion(data, args)
         else:
             raise NotImplementedError('Not implemented or unknown Recommender Model.')
         model.train()

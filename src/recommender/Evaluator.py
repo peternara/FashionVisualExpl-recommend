@@ -136,6 +136,7 @@ class Evaluator:
         :param k: top-k evaluation
         """
         self.data = data
+        self.batch_eval = self.data.params.batch_eval
         self.k = k
 
         if data.validation_list:
@@ -172,7 +173,8 @@ class Evaluator:
         if not attentive:
             all_predictions = self.model.predict_all().numpy()
         else:
-            all_predictions, _ = self.model.predict_all()
+            all_predictions, _ = self.model.predict_all_batch(self.data.params.batch_eval,
+                                                              self.data.next_image_batch_pipeline())
 
         hr_v, prec_v, rec_v, auc_v, ndcg_v = '0', '0', '0', '0', '0'
 
@@ -243,7 +245,7 @@ class Evaluator:
         :return:
         """
         # results = self.model.predict_all().numpy()
-        results, attentions = self.model.predict_all()
+        results, attentions = self.model.predict_all_batch(self.batch_eval, self.data.next_image_batch_pipeline())
         with open(path, 'w') as out:
             for u in range(results.shape[0]):
                 results[u][self.data.training_list[u]] = -np.inf
@@ -252,7 +254,8 @@ class Evaluator:
                 for i, value in enumerate(top_k_id):
                     out.write(
                         str(u) + '\t' + str(value) + '\t' + str(top_k_score[i]) + '\t' + \
-                        str(attentions[u, value, 0]) + '\t' + str(attentions[u, value, 1]) + '\n'
+                        str(attentions[u, value, 0]) + '\t' + str(attentions[u, value, 1]) + '\t' + str(
+                            attentions[u, value, 2]) + '\n'
                     )
 
     def store_recommendation_grads(self, path=""):
