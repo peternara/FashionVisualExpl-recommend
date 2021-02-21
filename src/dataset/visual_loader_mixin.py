@@ -38,6 +38,16 @@ class VisualLoader:
         emb_image = np.load(path)
         return emb_image.shape
 
+    def get_color_feature_size(self):
+        path = hist_color_features_path_dir.format(self.data.params.dataset) + '0.npy'
+        emb_image = np.load(path)
+        return emb_image.shape
+
+    def get_class_feature_size(self):
+        path = class_features_path_dir.format(self.data.params.dataset) + '0.npy'
+        emb_image = np.load(path)
+        return emb_image.shape
+
     def process_color_visual_features(self):
         self.color_features = np.load(hist_color_features_path.format(self.data.params.dataset))
         self.color_features = self.color_features / np.max(np.abs(self.color_features))

@@ -22,7 +22,9 @@ texture_features_path = original + 'texture_features_{1}.npy'
 
 features_path = original + 'features/'
 hist_color_features_path = features_path + 'histograms.npy'
+hist_color_features_path_dir = features_path + 'color_histograms/'
 class_features_path = features_path + 'one_hot_enc.npy'
+class_features_path_dir = features_path + 'one_hot_encodings/'
 colors_path = features_path + 'colors/'
 edges_path = features_path + 'edges/'
 

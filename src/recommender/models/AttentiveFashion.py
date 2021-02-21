@@ -1,7 +1,6 @@
 import logging
 from time import time
 from abc import ABC
-from copy import deepcopy
 
 import numpy as np
 import tensorflow as tf
@@ -28,17 +27,15 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
 
         del self.Gi
 
-        self.process_color_visual_features()
-        self.process_class_visual_features()
-
         # Initialize input features encoders
         self.color_encoder = None
         self.edges_encoder = None
         self.class_encoder = None
 
+        self.color_shape = self.get_color_feature_size()
+        self.class_shape = self.get_class_feature_size()
+
         # Create model parameters
-        self.color_embedding = None
-        self.class_embedding = None
         self.create_color_weights()
         self.create_edges_weights()
         self.create_class_weights()
@@ -53,14 +50,9 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
         self.saver_ckpt = tf.train.Checkpoint(optimizer=self.optimizer, model=self)
 
     def create_color_weights(self):
-        self.color_embedding = tf.Variable(
-            self.color_features,
-            name='FeatColor', dtype=tf.float32, trainable=False
-        )
         self.color_encoder = tf.keras.Sequential([
-            tf.keras.layers.Dense(units=1024, activation='relu', input_dim=self.color_embedding.shape[1]),
-            tf.keras.layers.Dense(units=512, activation='relu'),
-            tf.keras.layers.Dense(units=256, activation='relu'),
+            tf.keras.layers.Dense(units=256, activation='relu', input_dim=self.color_shape[0]),
+            tf.keras.layers.Dropout(rate=0.5),
             tf.keras.layers.Dense(units=self.embed_k, use_bias=False)
         ])
 
@@ -68,22 +60,15 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
         self.edges_encoder = tf.keras.Sequential([
             tf.keras.layers.Conv2D(filters=64, kernel_size=(5, 5), padding='same', activation='relu'),
             tf.keras.layers.MaxPool2D(padding='same'),
-            tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), padding='same', activation='relu'),
-            tf.keras.layers.MaxPool2D(padding='same'),
             tf.keras.layers.GlobalAveragePooling2D(),
-            tf.keras.layers.Dense(units=256, activation='relu', input_dim=self.color_embedding.shape[1]),
+            tf.keras.layers.Dropout(rate=0.5),
             tf.keras.layers.Dense(units=self.embed_k, use_bias=False)
         ])
 
     def create_class_weights(self):
-        self.class_embedding = tf.Variable(
-            self.class_features,
-            name='FeatClass', dtype=tf.float32, trainable=False
-        )
         self.class_encoder = tf.keras.Sequential([
-            tf.keras.layers.Dense(units=1024, activation='relu', input_dim=self.class_embedding.shape[1]),
-            tf.keras.layers.Dense(units=512, activation='relu'),
-            tf.keras.layers.Dense(units=256, activation='relu'),
+            tf.keras.layers.Dense(units=256, activation='relu', input_dim=self.class_shape[0]),
+            tf.keras.layers.Dropout(rate=0.5),
             tf.keras.layers.Dense(units=self.embed_k, use_bias=False)
         ])
 
@@ -136,7 +121,7 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
         return all_alpha
 
     def call(self, inputs, training=None, mask=None):
-        user, item, edges = inputs
+        user, item, edges, col, class_ = inputs
 
         # USER
         # user collaborative profile
@@ -144,11 +129,11 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
 
         # ITEM
         # item color features
-        color_i = tf.expand_dims(self.color_encoder(tf.squeeze(tf.nn.embedding_lookup(self.color_embedding, item))), 1)
+        color_i = tf.expand_dims(self.color_encoder(col), 1)
         # item edge features
         edges_i = tf.expand_dims(self.edges_encoder(edges), 1)
         # item class features
-        class_i = tf.expand_dims(self.class_encoder(tf.squeeze(tf.nn.embedding_lookup(self.class_embedding, item))), 1)
+        class_i = tf.expand_dims(self.class_encoder(class_), 1)
 
         # attention network
         attention_inputs = {
@@ -173,7 +158,7 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
                all_attention
 
     def train_step(self, batch):
-        user, pos, edges_pos, neg, edges_neg = batch
+        user, pos, edges_pos, col_pos, class_pos, neg, edges_neg, col_neg, class_neg = batch
         with tf.GradientTape() as t:
             # Clean Inference
             xu_pos, \
@@ -181,14 +166,14 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
             color_i_pos, \
             edge_i_pos, \
             class_i_pos, \
-            attention_pos = self(inputs=(user, pos, edges_pos), training=True)
+            attention_pos = self(inputs=(user, pos, edges_pos, col_pos, class_pos), training=True)
 
             xu_neg, \
             _, \
             color_i_neg, \
             edge_i_neg, \
             class_i_neg, \
-            attention_neg = self(inputs=(user, neg, edges_neg), training=True)
+            attention_neg = self(inputs=(user, neg, edges_neg, col_neg, class_neg), training=True)
 
             result = tf.clip_by_value(xu_pos - xu_neg, -80.0, 1e8)
             loss = tf.reduce_sum(tf.nn.softplus(-result))
@@ -251,7 +236,7 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
                     if max_metrics[metric] <= results[it][metric + '_v']:
                         max_metrics[metric] = results[it][metric + '_v']
                         if metric == self.params.best_metric:
-                            best_epoch, best_model, best_epoch_print = it, deepcopy(self), epoch_print
+                            best_epoch, best_model, best_epoch_print = it, self, epoch_print
 
                 if (it % self.verbose == 0 or it == 1) and self.verbose != -1:
                     self.saver_ckpt.save(f'{weight_dir}/{self.params.dataset}/{self.params.rec}/' + \
@@ -294,22 +279,16 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
         all_attentions = []
         reminder = self.num_items % step
 
-        all_colors = self.color_encoder(self.color_embedding)
-        all_class = self.class_encoder(self.class_embedding)
-
         for u in range(self.num_users):
             current_predictions = []
             current_attentions = []
             gamma_u = tf.repeat(tf.expand_dims(self.Gu[u], 0), repeats=step, axis=0)
-            sv = 0
-            for id_im, im in next_image:
+            for id_im, im, col, class_ in next_image:
                 if self.data.num_items == id_im.numpy()[-1] + 1:
                     gamma_u = gamma_u[:reminder]
                 edges = tf.expand_dims(self.edges_encoder(im), 1)
-                colors = tf.expand_dims(
-                    all_colors[sv:(sv + step if self.data.num_items != id_im.numpy()[-1] + 1 else sv + reminder)], 1)
-                classes = tf.expand_dims(
-                    all_class[sv:(sv + step if self.data.num_items != id_im.numpy()[-1] + 1 else sv + reminder)], 1)
+                colors = tf.expand_dims(self.color_encoder(col), 1)
+                classes = tf.expand_dims(self.class_encoder(class_), 1)
                 # attention network
                 attention_inputs = {
                     'gamma_u': gamma_u,
@@ -327,7 +306,6 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
                 ), axis=1)), axis=1)
                 current_predictions += xui.numpy().tolist()
                 current_attentions += all_attention.numpy()[:, :, 0].tolist()
-                sv = sv + step
             all_predictions.append(current_predictions)
             all_attentions.append(current_attentions)
 

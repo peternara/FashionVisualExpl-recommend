@@ -124,9 +124,9 @@ class DataLoader(object):
     def next_triple_batch_pipeline(self):
         def load_func(u, p, n):
             b = tf.py_function(
-                self.read_images_triple,
+                self.read_images_features_triple,
                 (u, p, n,),
-                (np.int32, np.int32, np.float32, np.int32, np.float32)
+                (np.int32, np.int32, np.float32, np.float32, np.float32, np.int32, np.float32, np.float32, np.float32)
             )
             return b
 
@@ -144,7 +144,7 @@ class DataLoader(object):
             b = tf.py_function(
                 self.read_image,
                 (i,),
-                (np.int32, np.float32)
+                (np.int32, np.float32, np.float32, np.float32)
             )
             return b
 
@@ -160,6 +160,8 @@ class DataLoader(object):
     def read_image(self, item):
         # load positive image
         im = Image.open(edges_path.format(self.params.dataset) + str(item.numpy()) + '.tiff').convert('L')
+        col = np.load(hist_color_features_path_dir.format(self.params.dataset) + str(item.numpy()) + '.npy')
+        class_ = np.load(class_features_path_dir.format(self.params.dataset) + str(item.numpy()) + '.npy')
 
         try:
             im.load()
@@ -167,12 +169,20 @@ class DataLoader(object):
             print(f'Image at path {item}.jpg was not loaded correctly!')
 
         im = np.array(im.resize((224, 224))).reshape((224, 224, 1)) / np.float32(255)
-        return item, im
+        col = col / np.max(np.abs(col))
 
-    def read_images_triple(self, user, pos, neg):
+        return item, im, col, class_
+
+    def read_images_features_triple(self, user, pos, neg):
         # load positive and negative item images
         im_pos = Image.open(edges_path.format(self.params.dataset) + str(pos.numpy()) + '.tiff').convert('L')
         im_neg = Image.open(edges_path.format(self.params.dataset) + str(neg.numpy()) + '.tiff').convert('L')
+
+        col_pos = np.load(hist_color_features_path_dir.format(self.params.dataset) + str(pos.numpy()) + '.npy')
+        col_neg = np.load(hist_color_features_path_dir.format(self.params.dataset) + str(neg.numpy()) + '.npy')
+
+        class_pos = np.load(class_features_path_dir.format(self.params.dataset) + str(pos.numpy()) + '.npy')
+        class_neg = np.load(class_features_path_dir.format(self.params.dataset) + str(neg.numpy()) + '.npy')
 
         try:
             im_pos.load()
@@ -191,4 +201,8 @@ class DataLoader(object):
 
         im_pos = np.array(im_pos.resize((224, 224))).reshape((224, 224, 1)) / np.float32(255)
         im_neg = np.array(im_neg.resize((224, 224))).reshape((224, 224, 1)) / np.float32(255)
-        return user.numpy(), pos.numpy(), im_pos, neg.numpy(), im_neg
+
+        col_pos = col_pos / np.max(np.abs(col_pos))
+        col_neg = col_neg / np.max(np.abs(col_neg))
+
+        return user.numpy(), pos.numpy(), im_pos, col_pos, class_pos, neg.numpy(), im_neg, col_neg, class_neg
