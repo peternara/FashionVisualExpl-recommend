@@ -1,6 +1,9 @@
 import argparse
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+# [0.0, 0.00001, 0.0001, 0.001, 0.01, 0.1]
 
 from dataset.dataset import DataLoader
 from recommender.models.BPRMF import BPRMF
@@ -29,7 +32,7 @@ def parse_args():
 
     # Parameters useful during the visual recs
     parser.add_argument('--list_of_regs', nargs='+', type=float,
-                        default=[0.0, 0.00001, 0.0001, 0.001, 0.01, 0.1], help='list of regularization terms')
+                        default=[0.0], help='list of regularization terms')
     parser.add_argument('--layers_component', type=list, default=[64, 1], help='list component level layers for ACF')
     parser.add_argument('--layers_item', type=list, default=[64, 1], help='list item level layers for ACF')
     parser.add_argument('--attention_layers', type=list, default=[64, 1], help='list of attention layers')
