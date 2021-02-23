@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=200, help='Number of epochs.')
     parser.add_argument('--verbose', type=int, default=-1, help='number of epochs to store model parameters.')
     parser.add_argument('--batch_eval', type=int, default=128, help='batch size on items for evaluation.')
-    parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate.')
+    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
     parser.add_argument('--validation', type=bool, default=True, help='True to use validation set, False otherwise')
     parser.add_argument('--restore_epochs', type=int, default=1,
                         help='Default is 1: The restore epochs (Must be lower than the epochs)')
@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument('--cnn_model', nargs='?', default='vgg19', help='Model used for feature extraction.')
     parser.add_argument('--output_layer', nargs='?', default='fc2',
                         help='Output layer for feature extraction.')
-    parser.add_argument('--embed_k', type=int, default=32, help='Embedding size.')
+    parser.add_argument('--embed_k', type=int, default=128, help='Embedding size.')
     parser.add_argument('--embed_d', type=int, default=20, help='size of low dimensionality for visual features')
     parser.add_argument('--reg', type=float, default=0, help='regularization')
 

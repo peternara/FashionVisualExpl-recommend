@@ -25,8 +25,6 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
         self.initializer_attentive = tf.initializers.GlorotUniform()
         self.attention_layers = self.params.attention_layers
 
-        del self.Gi
-
         # Initialize input features encoders
         self.color_encoder = None
         self.edges_encoder = None
@@ -72,17 +70,60 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
             tf.keras.layers.Dense(units=self.embed_k, use_bias=False)
         ])
 
+    # def create_attention_weights(self):
+    #     for layer in range(len(self.attention_layers)):
+    #         if layer == 0:
+    #             self.attention_network['W_{}_u'.format(layer + 1)] = tf.Variable(
+    #                 self.initializer_attentive(shape=[self.embed_k, self.attention_layers[layer]]),
+    #                 name='W_{}_u'.format(layer + 1),
+    #                 dtype=tf.float32
+    #             )
+    #             self.attention_network['W_{}_f'.format(layer + 1)] = tf.Variable(
+    #                 self.initializer_attentive(shape=[self.embed_k, self.attention_layers[layer]]),
+    #                 name='W_{}_f'.format(layer + 1),
+    #                 dtype=tf.float32
+    #             )
+    #             self.attention_network['b_{}'.format(layer + 1)] = tf.Variable(
+    #                 self.initializer_attentive(shape=[self.attention_layers[layer]]),
+    #                 name='b_{}'.format(layer + 1),
+    #                 dtype=tf.float32
+    #             )
+    #         else:
+    #             self.attention_network['W_{}'.format(layer + 1)] = tf.Variable(
+    #                 self.initializer_attentive(shape=[self.attention_layers[layer - 1], self.attention_layers[layer]]),
+    #                 name='W_{}'.format(layer + 1),
+    #                 dtype=tf.float32
+    #             )
+    #             self.attention_network['b_{}'.format(layer + 1)] = tf.Variable(
+    #                 self.initializer_attentive(shape=[self.attention_layers[layer]]),
+    #                 name='b_{}'.format(layer + 1),
+    #                 dtype=tf.float32
+    #             )
+    #
+    # def propagate_attention(self, inputs):
+    #     g_u, colors, edges, classes = inputs['gamma_u'], inputs['colors'], inputs['edges'], inputs['classes']
+    #     all_a_i_l = None
+    #
+    #     for layer in range(len(self.attention_layers)):
+    #         if layer == 0:
+    #             all_a_i_l = tf.expand_dims(tf.matmul(g_u, self.attention_network['W_{}_u'.format(layer + 1)]), 1) + \
+    #                         tf.tensordot(tf.concat([colors, edges, classes], axis=1),
+    #                                      self.attention_network['W_{}_f'.format(layer + 1)], axes=[[2], [0]]) + \
+    #                         self.attention_network['b_{}'.format(layer + 1)]
+    #             all_a_i_l = tf.nn.relu(all_a_i_l)
+    #         else:
+    #             all_a_i_l = tf.tensordot(all_a_i_l, self.attention_network['W_{}'.format(layer + 1)], axes=[[2], [0]]) + \
+    #                         self.attention_network['b_{}'.format(layer + 1)]
+    #
+    #     all_alpha = tf.nn.softmax(all_a_i_l, axis=1)
+    #     return all_alpha
+
     def create_attention_weights(self):
         for layer in range(len(self.attention_layers)):
             if layer == 0:
-                self.attention_network['W_{}_u'.format(layer + 1)] = tf.Variable(
+                self.attention_network['W_{}'.format(layer + 1)] = tf.Variable(
                     self.initializer_attentive(shape=[self.embed_k, self.attention_layers[layer]]),
-                    name='W_{}_u'.format(layer + 1),
-                    dtype=tf.float32
-                )
-                self.attention_network['W_{}_f'.format(layer + 1)] = tf.Variable(
-                    self.initializer_attentive(shape=[self.embed_k, self.attention_layers[layer]]),
-                    name='W_{}_f'.format(layer + 1),
+                    name='W_{}'.format(layer + 1),
                     dtype=tf.float32
                 )
                 self.attention_network['b_{}'.format(layer + 1)] = tf.Variable(
@@ -108,14 +149,18 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
 
         for layer in range(len(self.attention_layers)):
             if layer == 0:
-                all_a_i_l = tf.expand_dims(tf.matmul(g_u, self.attention_network['W_{}_u'.format(layer + 1)]), 1) + \
-                            tf.tensordot(tf.concat([colors, edges, classes], axis=1),
-                                         self.attention_network['W_{}_f'.format(layer + 1)], axes=[[2], [0]]) + \
-                            self.attention_network['b_{}'.format(layer + 1)]
+                all_a_i_l = tf.tensordot(
+                    tf.expand_dims(g_u, 1) * tf.concat([colors, edges, classes], axis=1),
+                    self.attention_network['W_{}'.format(layer + 1)],
+                    axes=[[2], [0]]
+                ) + self.attention_network['b_{}'.format(layer + 1)]
                 all_a_i_l = tf.nn.relu(all_a_i_l)
             else:
-                all_a_i_l = tf.tensordot(all_a_i_l, self.attention_network['W_{}'.format(layer + 1)], axes=[[2], [0]]) + \
-                            self.attention_network['b_{}'.format(layer + 1)]
+                all_a_i_l = tf.tensordot(
+                    all_a_i_l,
+                    self.attention_network['W_{}'.format(layer + 1)],
+                    axes=[[2], [0]]
+                ) + self.attention_network['b_{}'.format(layer + 1)]
 
         all_alpha = tf.nn.softmax(all_a_i_l, axis=1)
         return all_alpha
@@ -128,6 +173,8 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
         gamma_u = tf.squeeze(tf.nn.embedding_lookup(self.Gu, user))
 
         # ITEM
+        # item collaborative profile
+        gamma_i = tf.squeeze(tf.nn.embedding_lookup(self.Gi, item))
         # item color features
         color_i = tf.expand_dims(self.color_encoder(col), 1)
         # item edge features
@@ -143,15 +190,17 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
             'classes': class_i
         }
         all_attention = self.propagate_attention(attention_inputs)
-
-        # score prediction
-        xui = tf.reduce_sum(gamma_u * (tf.reduce_sum(tf.multiply(
+        weighted_features = tf.reduce_sum(tf.multiply(
             all_attention,
             tf.concat([color_i, edges_i, class_i], axis=1)
-        ), axis=1)), axis=1)
+        ), axis=1)
+
+        # score prediction
+        xui = tf.reduce_sum(gamma_u * weighted_features * gamma_i, axis=1)
 
         return xui, \
                gamma_u, \
+               gamma_i, \
                color_i, \
                edges_i, \
                class_i, \
@@ -163,6 +212,7 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
             # Clean Inference
             xu_pos, \
             gamma_u, \
+            gamma_i_pos, \
             color_i_pos, \
             edge_i_pos, \
             class_i_pos, \
@@ -170,6 +220,7 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
 
             xu_neg, \
             _, \
+            gamma_i_neg, \
             color_i_neg, \
             edge_i_neg, \
             class_i_neg, \
@@ -180,6 +231,8 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
 
             # Regularization Component
             reg_loss = self.reg * tf.reduce_sum([tf.nn.l2_loss(gamma_u),
+                                                 tf.nn.l2_loss(gamma_i_pos),
+                                                 tf.nn.l2_loss(gamma_i_neg),
                                                  tf.nn.l2_loss(color_i_pos), tf.nn.l2_loss(color_i_neg),
                                                  tf.nn.l2_loss(edge_i_pos), tf.nn.l2_loss(edge_i_neg),
                                                  tf.nn.l2_loss(class_i_pos), tf.nn.l2_loss(class_i_neg),
@@ -191,6 +244,7 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
 
         params = [
             self.Gu,
+            self.Gi,
             *self.color_encoder.trainable_weights,
             *self.edges_encoder.trainable_weights,
             *self.class_encoder.trainable_weights,
@@ -288,6 +342,8 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
             for id_im, im, col, class_ in next_image:
                 if self.data.num_items == id_im.numpy()[-1] + 1:
                     gamma_u = gamma_u[:reminder]
+
+                gamma_i = tf.nn.embedding_lookup(self.Gi, id_im)
                 edges = tf.expand_dims(self.edges_encoder(im), 1)
                 colors = tf.expand_dims(self.color_encoder(col), 1)
                 classes = tf.expand_dims(self.class_encoder(class_), 1)
@@ -300,12 +356,13 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
                 }
 
                 all_attention = self.propagate_attention(attention_inputs)
-
-                # score prediction
-                xui = tf.reduce_sum(gamma_u * (tf.reduce_sum(tf.multiply(
+                weighted_features = tf.reduce_sum(tf.multiply(
                     all_attention,
                     tf.concat([colors, edges, classes], axis=1)
-                ), axis=1)), axis=1)
+                ), axis=1)
+
+                # score prediction
+                xui = tf.reduce_sum(gamma_u * weighted_features * gamma_i, axis=1)
                 current_predictions += xui.numpy().tolist()
                 current_attentions += all_attention.numpy()[:, :, 0].tolist()
             all_predictions.append(current_predictions)
