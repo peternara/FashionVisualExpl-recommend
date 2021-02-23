@@ -182,7 +182,9 @@ class AttentiveFashion(BPRMF, VisualLoader, ABC):
             reg_loss = self.reg * tf.reduce_sum([tf.nn.l2_loss(gamma_u),
                                                  tf.nn.l2_loss(color_i_pos), tf.nn.l2_loss(color_i_neg),
                                                  tf.nn.l2_loss(edge_i_pos), tf.nn.l2_loss(edge_i_neg),
-                                                 tf.nn.l2_loss(class_i_pos), tf.nn.l2_loss(class_i_neg)]) * 2
+                                                 tf.nn.l2_loss(class_i_pos), tf.nn.l2_loss(class_i_neg),
+                                                 *[tf.nn.l2_loss(value) for _, value in
+                                                   self.attention_network.items()]]) * 2
 
             # Loss to be optimized
             loss += reg_loss
