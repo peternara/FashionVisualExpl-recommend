@@ -77,7 +77,7 @@ def classify_extract():
     #     writer.writeheader()
 
     for i, d in enumerate(data):
-        norm_image, original_image, path = d
+        original_image, path = d
 
         # high-level visual features extraction
         # out_class = cnn_model.classify(sample=(norm_image, path))

@@ -37,6 +37,7 @@ class Dataset:
         if sample.mode != 'RGB':
             sample = sample.convert(mode='RGB')
 
-        norm_sample = self.resize_and_normalize(sample)
+        # norm_sample = self.resize_and_normalize(sample)
 
-        return np.expand_dims(norm_sample, axis=0), np.array(sample), self.filenames[idx]
+        # return np.expand_dims(norm_sample, axis=0), np.array(sample), self.filenames[idx]
+        return np.array(sample), self.filenames[idx]
