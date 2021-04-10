@@ -85,7 +85,7 @@ def classify_extract():
         # writer.writerow(out_class)
 
         # low-level visual feature extraction
-        edge, color, color_image = low_level_model.extract_color_edges(sample=(original_image, path))
+        edge, color = low_level_model.extract_color_edges(sample=(original_image, path))
         # colors[i] = color
         # edges[i] = cnn_model.extract_feature(
         #     sample=(np.expand_dims(data.resize_and_normalize(Image.fromarray(
