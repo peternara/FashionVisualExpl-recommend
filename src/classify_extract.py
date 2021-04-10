@@ -93,7 +93,7 @@ def classify_extract():
         # )
         # io.imsave(edges_path.format(args.dataset) + str(i) + '.tiff', edge)
         save_np(npy=color, filename=colors_path.format(args.dataset) + str(i) + '.npy')
-        io.imsave(colors_path.format(args.dataset) + str(i) + '.jpg', color_image)
+        # io.imsave(colors_path.format(args.dataset) + str(i) + '.jpg', color_image)
 
         if (i + 1) % args.print_each == 0:
             sys.stdout.write('\r%d/%d samples completed' % (i + 1, data.num_samples))
