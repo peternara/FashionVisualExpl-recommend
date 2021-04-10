@@ -111,7 +111,7 @@ def classify_extract():
     # print('Saved cnn features numpy to ==> %s' %
     #       cnn_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
     # print('Saved classification file to ==> %s' % classes_path.format(args.dataset, args.model_name.lower()))
-    print('Saved colors features numpy to ==> %s' % color_features_path.format(args.dataset))
+    print('Saved colors features numpy to ==> %s' % colors_path.format(args.dataset))
     # print('Saved edges features numpy to ==> %s' % edge_features_path.format(args.dataset,
     #                                                                          args.model_name.lower(),
     #                                                                          args.cnn_output_name))
