@@ -64,7 +64,7 @@ def classify_extract():
     # cnn_features = np.empty(shape=cnn_features_shape)
 
     # low-level visual features
-    colors = np.empty(shape=[data.num_samples, args.num_colors * 3])
+    # colors = np.empty(shape=[data.num_samples, args.num_colors * 3])
     # edges = np.empty(shape=cnn_features_shape)
 
     # classification and features extraction
@@ -86,12 +86,13 @@ def classify_extract():
 
         # low-level visual feature extraction
         edge, color, color_image = low_level_model.extract_color_edges(sample=(original_image, path))
-        colors[i] = color
+        # colors[i] = color
         # edges[i] = cnn_model.extract_feature(
         #     sample=(np.expand_dims(data.resize_and_normalize(Image.fromarray(
         #         cv2.cvtColor(edge, cv2.COLOR_GRAY2RGB))), axis=0), path)
         # )
         # io.imsave(edges_path.format(args.dataset) + str(i) + '.tiff', edge)
+        save_np(npy=color, filename=colors_path.format(args.dataset) + str(i) + '.npy')
         io.imsave(colors_path.format(args.dataset) + str(i) + '.jpg', color_image)
 
         if (i + 1) % args.print_each == 0:
@@ -100,7 +101,7 @@ def classify_extract():
 
     # save_np(npy=cnn_features,
     #         filename=cnn_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
-    save_np(npy=colors, filename=color_features_path.format(args.dataset))
+    # save_np(npy=colors, filename=color_features_path.format(args.dataset))
     # save_np(npy=edges,
     #         filename=edge_features_path.format(args.dataset, args.model_name.lower(), args.cnn_output_name))
 
