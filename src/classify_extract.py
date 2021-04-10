@@ -19,7 +19,7 @@ import cv2
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run classification and feature extraction for original images.")
-    parser.add_argument('--gpu', type=int, default=0, help='GPU id to run experiments')
+    parser.add_argument('--gpu', type=int, default=-1, help='GPU id to run experiments')
     parser.add_argument('--dataset', nargs='?', default='amazon_baby', help='dataset path')
     parser.add_argument('--model_name', nargs='?', default='ResNet50', help='model for feature extraction')
     parser.add_argument('--num_colors', type=int, default=3, help='number of dominant colors to extract')
